@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Início | UaiRotas{% endblock %}
+
+{% block content %}
+<main class="placeholder-page">
+  <section>
+    <p class="eyebrow eyebrow--dark">UaiRotas</p>
+    <h1>Olá, {{ current_user.name }}.</h1>
+    <p>O acesso foi realizado com sucesso. O painel principal será implementado na próxima etapa.</p>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="secondary-button" type="submit">Sair</button>
+    </form>
+  </section>
+</main>
+{% endblock %}
+
