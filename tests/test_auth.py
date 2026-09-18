@@ -22,7 +22,8 @@ def test_valid_login_redirects_to_home(client):
 
     assert response.status_code == 200
     assert b"Admin UaiRotas" in response.data
-    assert b"O acesso foi realizado com sucesso" in response.data
+    assert b"Vis" in response.data
+    assert b"Equipes em campo" in response.data
 
 
 def test_invalid_login_displays_generic_error(client):
@@ -70,4 +71,3 @@ def test_external_next_url_is_rejected(client):
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/")
-

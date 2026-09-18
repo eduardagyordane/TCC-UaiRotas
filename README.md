@@ -1,46 +1,130 @@
 # UaiRotas
 
-Sistema web desenvolvido como parte do TCC **Otimização da Gestão de Equipes Externas por Meio de Monitoramento Geolocalizado e Análise Temporal de Rotas**.
+Sistema web desenvolvido para o TCC **Otimização da Gestão de Equipes Externas por Meio de Monitoramento Geolocalizado e Análise Temporal de Rotas**.
+
+Nesta etapa estão implementadas a autenticação administrativa e a Home operacional. Os dados exibidos na Home são demonstrativos e estão preparados para serem substituídos pelas integrações com Cobli e IXC.
+
+## Funcionalidades disponíveis
+
+- Login protegido com sessão, senha armazenada por hash e proteção CSRF.
+- Home acessível somente após autenticação.
+- Menu superior com Home, Rotas, Frota, Relatórios e Usuários.
+- Perfil do usuário com encerramento seguro da sessão.
+- Temas claro e escuro com preferência salva no navegador.
+- Indicadores de veículos, técnicos, ordens de serviço e alertas.
+- Mapa operacional demonstrativo com veículos, rota e locais de interesse.
+- Alertas operacionais, incluindo almoço superior a duas horas.
+- Relação das ordens de serviço do dia.
+- Gráfico de desempenho das ordens.
+- Layout responsivo para computador, tablet e celular.
 
 ## Tecnologias
 
 - Python 3.12+
-- Flask
-- HTML com Jinja2
-- CSS e JavaScript
+- Flask 3
+- Flask-Login
+- Flask-SQLAlchemy
+- Flask-WTF
 - SQLite
-- Pytest
+- HTML e Jinja2
+- CSS responsivo
+- JavaScript sem frameworks
+- Pytest e pytest-cov
 
-## Executar localmente
+## Estrutura principal
 
-```bash
-python -m venv .venv
+```text
+TCC-UaiRotas/
+├── run.py
+├── requirements.txt
+├── requirements-dev.txt
+├── tests/
+│   ├── conftest.py
+│   ├── test_auth.py
+│   ├── test_home.py
+│   └── test_models.py
+└── uairotas/
+    ├── __init__.py
+    ├── auth.py
+    ├── main.py
+    ├── models.py
+    ├── static/
+    │   ├── css/app.css
+    │   └── js/app.js
+    └── templates/
+        ├── auth/login.html
+        ├── base.html
+        └── home.html
 ```
 
-No Windows:
+## Como executar no Windows
+
+Abra o PowerShell na pasta do projeto e execute:
 
 ```powershell
-.venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
-copy .env.example .env
+Copy-Item .env.example .env
 flask --app run.py init-db
 flask --app run.py create-admin
 flask --app run.py run --debug
 ```
 
-Acesse `http://127.0.0.1:5000/login`.
+O comando `create-admin` solicitará nome, e-mail e senha. A senha não será exibida durante a digitação.
 
-Antes de usar o sistema fora do ambiente local, altere `SECRET_KEY` no arquivo `.env`.
+Depois, acesse:
+
+```text
+http://127.0.0.1:5000/login
+```
+
+Se o PowerShell bloquear a ativação do ambiente virtual, execute apenas na sessão atual:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+## Como executar no Linux ou macOS
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env
+flask --app run.py init-db
+flask --app run.py create-admin
+flask --app run.py run --debug
+```
+
+## Configuração
+
+O arquivo `.env.example` contém as configurações iniciais. Copie-o para `.env` e troque a `SECRET_KEY` antes de utilizar o sistema fora do ambiente local.
+
+Exemplo para gerar uma chave:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Nunca envie o arquivo `.env`, tokens da Cobli, credenciais do IXC ou o banco de produção para o GitHub.
 
 ## Testes
+
+Com o ambiente virtual ativado, execute:
 
 ```bash
 pytest -q
 ```
 
-Para gerar o relatório de cobertura:
+Para executar com cobertura:
 
 ```bash
-pytest --cov=uairotas --cov-report=term-missing
+pytest -q --cov=uairotas --cov-report=term-missing
 ```
 
+Resultado da versão atual: **14 testes aprovados e 90% de cobertura total**. Consulte também [`TEST_RESULTS.md`](TEST_RESULTS.md).
+
+## Próximas integrações
+
+Os objetos demonstrativos definidos em `uairotas/main.py` serão substituídos gradualmente por consultas ao banco local, alimentado pelas APIs da Cobli e do IXC. As credenciais dessas APIs deverão permanecer somente no backend, por meio de variáveis de ambiente.
