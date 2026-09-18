@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Rotas | UaiRotas{% endblock %}
+{% block body_class %}app-page{% endblock %}
+
+{% block content %}
+{% set active_page = "routes" %}
+{% include "_app_header.html" %}
+
+<main class="routes-shell">
+  <section class="routes-heading" aria-labelledby="routes-title">
+    <div>
+      <p class="dashboard-kicker">Monitoramento operacional</p>
+      <h1 id="routes-title">Rotas e ordens de serviço</h1>
+      <p>Acompanhe os trajetos, atendimentos e alertas das equipes em campo.</p>
+    </div>
+    <div class="live-indicator"><span aria-hidden="true"></span><strong>Monitoramento ativo</strong><small>Atualizado às 08:42</small></div>
+  </section>
+
+  <form class="route-filters" method="get" aria-label="Filtros das rotas">
+    <label><span>Data</span><input type="date" name="data" value="{{ selected_date }}"></label>
+    <label><span>Colaborador</span><select name="colaborador"><option value="todos">Todos os colaboradores</option>{% for collaborator in collaborators %}<option value="{{ collaborator.id }}"{% if selected_collaborator == collaborator.id %} selected{% endif %}>{{ collaborator.name }}</option>{% endfor %}</select></label>
+    <label><span>Situação da OS</span><select name="status"><option value="todos">Todas as situações</option><option value="progress"{% if selected_status == 'progress' %} selected{% endif %}>Em atendimento</option><option value="route"{% if selected_status == 'route' %} selected{% endif %}>A caminho</option><option value="scheduled"{% if selected_status == 'scheduled' %} selected{% endif %}>Agendada</option><option value="late"{% if selected_status == 'late' %} selected{% endif %}>Atrasada</option></select></label>
+    <button class="filter-button" type="submit"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Aplicar filtros</button>
+  </form>
+
+  <section class="routes-layout">
+    <article class="panel routes-map-panel">
+      <header class="panel-header routes-map-header">
+        <div><h2>Mapa das equipes</h2><p>Use o mouse, toque ou controles para movimentar e ampliar</p></div>
+        <div class="map-summary"><span><i class="route-color route-color--red"></i>3 em campo</span><span><i class="interest-symbol">◆</i>4 locais de interesse</span></div>
+      </header>
+      <div class="routes-map" data-interactive-map{% if selected_collaborator != 'todos' %} data-focused-route="{{ selected_collaborator }}"{% endif %} tabindex="0" aria-label="Mapa interativo com as rotas dos colaboradores">
+        <div class="routes-map__stage" data-map-stage>
+          <svg class="routes-map__roads" viewBox="0 0 1200 680" preserveAspectRatio="none" aria-hidden="true">
+            <path class="city-block" d="M60 55h230v120H60zM355 35h235v150H355zM670 50h205v115H670zM940 25h205v160H940zM30 245h210v150H30zM305 250h250v135H305zM635 230h235v180H635zM945 250h225v135H945zM55 465h260v155H55zM390 455h210v165H390zM680 475h190v140H680zM940 445h230v175H940z"/>
+            <path class="city-road city-road--wide" d="M-30 420C210 330 355 470 550 365S880 250 1240 310"/>
+            <path class="city-road" d="M185-30c20 165 80 215 55 360s65 210 130 390M540-30c-50 180 75 230 20 400s80 190 155 350M930-30c-110 175-100 285 20 380s100 210 70 370"/>
+            <path class="city-road city-road--minor" d="M-30 205c210-45 375 45 570 5s390-85 700 5M-20 545c215 25 385-55 585-5s410 30 680-40"/>
+            <path class="collaborator-route collaborator-route--carlos" d="M120 535C230 460 300 500 410 420S585 330 690 250S840 170 980 205"/>
+            <path class="collaborator-route collaborator-route--ana" d="M1050 525c-130-30-180-120-300-95s-185 15-255-80S330 195 190 230"/>
+            <path class="collaborator-route collaborator-route--marcos" d="M475 580c70-80 155-75 215-140s25-145 110-195 175-15 250-110"/>
+          </svg>
+
+          <span class="map-area map-area--one">Centro</span><span class="map-area map-area--two">Caiçaras</span><span class="map-area map-area--three">Lagoa Grande</span><span class="map-area map-area--four">Caramuru</span>
+
+          <button class="route-vehicle route-vehicle--carlos" type="button" aria-label="Carlos Mendes, em atendimento"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Carlos Mendes</strong><small>Em atendimento</small></span></button>
+          <button class="route-vehicle route-vehicle--ana" type="button" aria-label="Ana Paula, a caminho"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Ana Paula</strong><small>A caminho</small></span></button>
+          <button class="route-vehicle route-vehicle--marcos is-alert" type="button" aria-label="Marcos Silva, almoço acima de duas horas"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Marcos Silva</strong><small>Parado há 2h18</small></span></button>
+
+          <span class="service-pin service-pin--one"><b>1</b><small>OS 10482</small></span><span class="service-pin service-pin--two"><b>2</b><small>OS 10491</small></span><span class="service-pin service-pin--three"><b>1</b><small>OS 10496</small></span><span class="service-pin service-pin--four"><b>2</b><small>OS 10503</small></span><span class="service-pin service-pin--five is-late"><b>3</b><small>OS 10511</small></span>
+
+          <span class="poi-pin poi-pin--office" title="Escritório Uai Telecom"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 21V7l8-4 8 4v14M9 21v-5h6v5M8 9h2M14 9h2M8 12h2M14 12h2"/></svg><small>Escritório</small></span>
+          <span class="poi-pin poi-pin--warehouse" title="Almoxarifado"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 10 12 4l9 6v10H3zM8 20v-6h8v6"/></svg><small>Almoxarifado</small></span>
+          <span class="poi-pin poi-pin--lunch" title="Local de almoço"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3v8M9 3v8M6 7h3M7.5 11v10M15 3c3 3 3 7 0 10v8"/></svg><small>Almoço</small></span>
+          <span class="poi-pin poi-pin--fuel" title="Posto credenciado"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 21V4h9v17M5 9h9M14 7h3l2 3v7a2 2 0 0 0 2 2M8 13h3"/></svg><small>Posto</small></span>
+        </div>
+
+        <div class="interactive-map-controls" aria-label="Controles do mapa">
+          <button type="button" data-map-action="zoom-in" aria-label="Ampliar mapa">+</button>
+          <button type="button" data-map-action="zoom-out" aria-label="Reduzir mapa">−</button>
+          <button type="button" data-map-action="reset" aria-label="Centralizar mapa"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M5 10a8 8 0 0 1 13-4M19 14a8 8 0 0 1-13 4"/></svg></button>
+          <button type="button" data-map-action="fullscreen" aria-label="Exibir mapa em tela cheia"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg></button>
+        </div>
+        <p class="map-instruction">Arraste para mover · use a roda do mouse para ampliar</p>
+        <div class="routes-legend"><span><i class="route-color route-color--red"></i>Carlos</span><span><i class="route-color route-color--blue"></i>Ana</span><span><i class="route-color route-color--yellow"></i>Marcos</span></div>
+      </div>
+    </article>
+
+    <aside class="routes-sidebar">
+      <section class="route-alert-card" role="alert">
+        <span class="route-alert-card__icon">!</span><div><strong>Almoço acima de 2 horas</strong><p>Marcos Silva está parado no local “Restaurante Central” há <b>2h18</b>.</p><a href="#marcos-route">Ver rota do colaborador →</a></div>
+      </section>
+
+      <section class="panel route-list-panel">
+        <header class="panel-header"><div><h2>Rotas dos colaboradores</h2><p>Resumo do dia</p></div><span class="panel-count">3</span></header>
+        <div class="collaborator-list">
+          {% for collaborator in collaborators %}
+            <article class="collaborator-card" id="{{ collaborator.id }}-route" style="--route-accent: {{ collaborator.color }}">
+              <div class="collaborator-card__top"><span class="collaborator-avatar">{{ collaborator.name[:1] }}</span><div><strong>{{ collaborator.name }}</strong><small>{{ collaborator.vehicle }}</small></div><span class="route-status route-status--{{ collaborator.status_key }}">{{ collaborator.status }}</span></div>
+              <div class="route-progress"><span style="width: {{ (collaborator.completed / collaborator.orders * 100) | round }}%"></span></div>
+              <div class="collaborator-stats"><span><b>{{ collaborator.distance }}</b> rodados</span><span><b>{{ collaborator.completed }}/{{ collaborator.orders }}</b> OS concluídas</span></div>
+              <button type="button" data-focus-route="{{ collaborator.id }}">Destacar rota no mapa</button>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    </aside>
+  </section>
+
+  <section class="panel route-orders-panel">
+    <header class="panel-header"><div><h2>Ordens de serviço</h2><p>Cliente, endereço e serviço programado</p></div><span class="result-count">{{ orders | length }} resultado{% if orders | length != 1 %}s{% endif %}</span></header>
+    {% if orders %}
+      <div class="route-order-grid">
+        {% for order in orders %}
+          <article class="route-order-card">
+            <div class="route-order-card__head"><span class="order-sequence">{{ order.sequence }}</span><div><strong>{{ order.code }}</strong><span class="status-badge status-badge--{{ order.status_key }}">{{ order.status }}</span></div><time>{{ order.time }}</time></div>
+            <h3>{{ order.customer }}</h3>
+            <p><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-13A7 7 0 1 0 5 9c0 6.8 7 13 7 13Z"/><circle cx="12" cy="9" r="2.5"/></svg>{{ order.address }}</p>
+            <p><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m14.7 6.3 3-3 3 3-3 3M13 8l-9 9v3h3l9-9M5 5h6M8 2v6"/></svg>{{ order.service }}</p>
+            <footer><span class="mini-avatar">{{ order.technician[:1] }}</span>{{ order.technician }}<a href="#">Ver detalhes →</a></footer>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state"><strong>Nenhuma ordem encontrada</strong><p>Altere os filtros para consultar outras ordens de serviço.</p></div>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

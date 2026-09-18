@@ -3,9 +3,9 @@
 Execução realizada em 18 de setembro de 2026 com Python 3.12.14.
 
 ```text
-..............                                                           [100%]
-14 passed in 2.90s
-Cobertura total: 90%
+......................                                                   [100%]
+22 passed in 3.91s
+Cobertura total: 91%
 ```
 
 ## Casos verificados
@@ -24,3 +24,11 @@ Cobertura total: 90%
 - Exibição do alerta de almoço superior a duas horas.
 - Presença dos controles acessíveis de tema e navegação.
 - Presença do formulário protegido para encerrar a sessão.
+- Proteção do módulo de Rotas contra acesso sem autenticação.
+- Renderização do mapa, colaboradores e ordens de serviço.
+- Exibição de cliente, endereço e tipo de serviço.
+- Exibição dos locais de interesse e do alerta de almoço.
+- Filtro de ordens por colaborador.
+- Filtro de ordens por situação.
+- Estado vazio quando nenhuma ordem corresponde aos filtros.
+- Navegação da Home para o módulo de Rotas.

@@ -2,7 +2,7 @@
 
 Sistema web desenvolvido para o TCC **Otimização da Gestão de Equipes Externas por Meio de Monitoramento Geolocalizado e Análise Temporal de Rotas**.
 
-Nesta etapa estão implementadas a autenticação administrativa e a Home operacional. Os dados exibidos na Home são demonstrativos e estão preparados para serem substituídos pelas integrações com Cobli e IXC.
+Nesta etapa estão implementadas a autenticação administrativa, a Home operacional e o módulo de Rotas. Os dados exibidos são demonstrativos e estão preparados para serem substituídos pelas integrações com Cobli e IXC.
 
 ## Funcionalidades disponíveis
 
@@ -17,6 +17,12 @@ Nesta etapa estão implementadas a autenticação administrativa e a Home operac
 - Relação das ordens de serviço do dia.
 - Gráfico de desempenho das ordens.
 - Layout responsivo para computador, tablet e celular.
+- Módulo de Rotas protegido por autenticação.
+- Mapa interativo com zoom, movimentação, centralização e tela cheia.
+- Rotas individuais por colaborador, com destaque selecionável.
+- Filtros por data, colaborador e situação da ordem de serviço.
+- Ordens com cliente, endereço e tipo de serviço.
+- Locais de interesse destacados por ícones.
 
 ## Tecnologias
 
@@ -42,6 +48,7 @@ TCC-UaiRotas/
 │   ├── conftest.py
 │   ├── test_auth.py
 │   ├── test_home.py
+│   ├── test_routes.py
 │   └── test_models.py
 └── uairotas/
     ├── __init__.py
@@ -53,8 +60,10 @@ TCC-UaiRotas/
     │   └── js/app.js
     └── templates/
         ├── auth/login.html
+        ├── _app_header.html
         ├── base.html
-        └── home.html
+        ├── home.html
+        └── routes.html
 ```
 
 ## Como executar no Windows
@@ -123,7 +132,7 @@ Para executar com cobertura:
 pytest -q --cov=uairotas --cov-report=term-missing
 ```
 
-Resultado da versão atual: **14 testes aprovados e 90% de cobertura total**. Consulte também [`TEST_RESULTS.md`](TEST_RESULTS.md).
+Resultado da versão atual: **22 testes aprovados e 91% de cobertura total**. Consulte também [`TEST_RESULTS.md`](TEST_RESULTS.md).
 
 ## Próximas integrações
 
