@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Relatórios | UaiRotas{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+{% set active_page = "reports" %}{% include "_app_header.html" %}
+<main class="reports-shell">
+  {% set report_title = "Relatórios" %}{% set report_description = "Resumo dos indicadores de rotas, equipes e frota." %}{% set report_tab = "overview" %}{% include "_report_page_header.html" %}
+  <section class="report-metric-grid" aria-label="Principais indicadores do período">
+    {% for metric in metrics %}<article class="report-metric report-metric--{{ metric.tone }}"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small class="report-trend report-trend--{{ metric.trend }}">{{ metric.detail }} <i>no período</i></small></article>{% endfor %}
+  </section>
+  <section class="report-overview-grid">
+    <article class="panel report-evolution-panel">
+      <header class="panel-header"><div><h2>Evolução operacional</h2><p>Ordens concluídas e quilômetros por mês</p></div><span class="report-chip">6 meses</span></header>
+      <div class="report-line-chart" role="img" aria-label="Gráfico com crescimento das ordens concluídas de abril a setembro">
+        <div class="report-y-axis"><span>500</span><span>400</span><span>300</span><span>200</span><span>100</span><span>0</span></div>
+        <div class="report-line-chart__plot">
+          <span class="chart-grid-line" style="--line:0"></span><span class="chart-grid-line" style="--line:1"></span><span class="chart-grid-line" style="--line:2"></span><span class="chart-grid-line" style="--line:3"></span><span class="chart-grid-line" style="--line:4"></span>
+          <svg viewBox="0 0 600 220" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="overview-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9233f" stop-opacity=".22"/><stop offset="1" stop-color="#d9233f" stop-opacity="0"/></linearGradient></defs><path d="M0 155 L120 143 L240 125 L360 106 L480 88 L600 68 L600 220 L0 220 Z" fill="url(#overview-area)"/><polyline class="report-line" points="0,155 120,143 240,125 360,106 480,88 600,68"/>{% for point in monthly %}<circle class="report-line-dot" cx="{{ loop.index0 * 120 }}" cy="{{ [155,143,125,106,88,68][loop.index0] }}" r="5"><title>{{ point.month }}: {{ point.orders }} ordens</title></circle>{% endfor %}</svg>
+          <div class="report-x-axis">{% for point in monthly %}<span>{{ point.month }}</span>{% endfor %}</div>
+        </div>
+      </div>
+      <div class="report-chart-caption"><span><i class="legend-swatch legend-swatch--red"></i>Ordens concluídas</span><strong>486 em setembro</strong></div>
+    </article>
+    <article class="panel report-status-panel">
+      <header class="panel-header"><div><h2>Situação das ordens</h2><p>Distribuição no período</p></div></header>
+      <div class="report-donut-layout"><div class="report-donut report-donut--orders" role="img" aria-label="78 por cento concluídas, 14 por cento em andamento e 8 por cento pendentes"><div><strong>528</strong><span>ordens</span></div></div><ul class="report-legend"><li><span><i class="legend-swatch legend-swatch--green"></i>Concluídas</span><strong>78%</strong></li><li><span><i class="legend-swatch legend-swatch--yellow"></i>Em andamento</span><strong>14%</strong></li><li><span><i class="legend-swatch legend-swatch--gray"></i>Pendentes</span><strong>8%</strong></li></ul></div>
+    </article>
+  </section>
+  <section class="report-module-grid" aria-label="Relatórios detalhados">
+    {% for card in report_cards %}<article class="report-module-card report-module-card--{{ card.tone }}"><span class="report-module-card__icon" aria-hidden="true">{% if loop.first %}<svg viewBox="0 0 24 24"><path d="M4 18c4-7 7-10 16-12M6 7h4v4H6zM14 14h4v4h-4z"/></svg>{% else %}<svg viewBox="0 0 24 24"><path d="m5 16 1.5-6h11l1.5 6M4 16h16v4H4zM8 10 9.5 7h5L16 10"/></svg>{% endif %}</span><div class="report-module-card__copy"><h2>{{ card.title }}</h2><p>{{ card.description }}</p><div><strong>{{ card.value }}</strong><span>{{ card.label }}</span></div></div><a href="{{ url_for(card.endpoint, periodo=selected_period) }}">Abrir relatório <span aria-hidden="true">→</span></a></article>{% endfor %}
+  </section>
+  <section class="panel report-alerts-panel"><header class="panel-header"><div><h2>Pontos de atenção</h2><p>Ocorrências encontradas nos relatórios</p></div></header><div class="report-alert-grid">{% for alert in alerts %}<article class="report-alert report-alert--{{ alert.tone }}"><span aria-hidden="true">!</span><div><strong>{{ alert.value }} · {{ alert.label }}</strong><p>{{ alert.detail }}</p></div></article>{% endfor %}</div></section>
+</main>
+{% endblock %}

@@ -319,3 +319,143 @@ def create_fleet_record(record_type):
 
     flash(success_messages[record_type], "success")
     return redirect(url_for("main.fleet"))
+
+
+def _selected_report_period():
+    periods = {
+        "7dias": "Últimos 7 dias",
+        "30dias": "Últimos 30 dias",
+        "90dias": "Últimos 90 dias",
+        "ano": "Ano de 2026",
+    }
+    selected = request.args.get("periodo", "30dias")
+    if selected not in periods:
+        selected = "30dias"
+    return selected, periods
+
+
+@main_bp.get("/relatorios")
+@login_required
+def reports():
+    selected_period, periods = _selected_report_period()
+    metrics = [
+        {"label": "Ordens concluídas", "value": "486", "detail": "+11,8%", "trend": "up", "tone": "red"},
+        {"label": "Quilometragem rodada", "value": "4.826 km", "detail": "+8,4%", "trend": "up", "tone": "blue"},
+        {"label": "Custo operacional", "value": "R$ 12.116,70", "detail": "−3,2%", "trend": "down", "tone": "yellow"},
+        {"label": "Tempo médio por OS", "value": "1h24", "detail": "−9 min", "trend": "down", "tone": "green"},
+    ]
+    monthly = [
+        {"month": "Abr", "orders": 328, "distance": 3220},
+        {"month": "Mai", "orders": 351, "distance": 3540},
+        {"month": "Jun", "orders": 389, "distance": 3870},
+        {"month": "Jul", "orders": 412, "distance": 4210},
+        {"month": "Ago", "orders": 448, "distance": 4550},
+        {"month": "Set", "orders": 486, "distance": 4826},
+    ]
+    report_cards = [
+        {
+            "title": "Relatório de rotas",
+            "description": "Produtividade, deslocamentos, ordens, tempos e desvios por colaborador.",
+            "value": "91%",
+            "label": "aderência às rotas",
+            "endpoint": "main.route_reports",
+            "tone": "red",
+        },
+        {
+            "title": "Relatório de frota",
+            "description": "Custos, combustível, quilometragem, multas e manutenções dos veículos.",
+            "value": "R$ 2,51",
+            "label": "custo médio por km",
+            "endpoint": "main.fleet_reports",
+            "tone": "blue",
+        },
+    ]
+    alerts = [
+        {"label": "Almoços acima de 2 horas", "value": "5", "detail": "2 a menos que no período anterior", "tone": "warning"},
+        {"label": "Manutenções vencendo", "value": "3", "detail": "1 veículo com prioridade alta", "tone": "danger"},
+        {"label": "Desvios de rota", "value": "9", "detail": "−18% no período", "tone": "info"},
+    ]
+    return render_template(
+        "reports_overview.html",
+        metrics=metrics,
+        monthly=monthly,
+        report_cards=report_cards,
+        alerts=alerts,
+        periods=periods,
+        selected_period=selected_period,
+    )
+
+
+@main_bp.get("/relatorios/frota")
+@login_required
+def fleet_reports():
+    selected_period, periods = _selected_report_period()
+    metrics = [
+        {"label": "Custo total", "value": "R$ 12.116,70", "detail": "−3,2%", "trend": "down", "tone": "red"},
+        {"label": "Custo por km", "value": "R$ 2,51", "detail": "−R$ 0,18", "trend": "down", "tone": "blue"},
+        {"label": "Consumo médio", "value": "10,8 km/L", "detail": "+0,6 km/L", "trend": "up", "tone": "green"},
+        {"label": "Manutenções", "value": "7", "detail": "3 programadas", "trend": "neutral", "tone": "yellow"},
+    ]
+    costs = [
+        {"label": "Combustível", "value": "R$ 8.420,30", "percent": 69, "tone": "red"},
+        {"label": "Manutenções", "value": "R$ 2.180,00", "percent": 18, "tone": "yellow"},
+        {"label": "Outros gastos", "value": "R$ 930,00", "percent": 8, "tone": "purple"},
+        {"label": "Multas", "value": "R$ 586,40", "percent": 5, "tone": "blue"},
+    ]
+    fuel_history = [
+        {"month": "Abr", "price": "5,72", "height": 42},
+        {"month": "Mai", "price": "5,84", "height": 49},
+        {"month": "Jun", "price": "5,91", "height": 55},
+        {"month": "Jul", "price": "6,03", "height": 64},
+        {"month": "Ago", "price": "6,11", "height": 72},
+        {"month": "Set", "price": "6,19", "height": 80},
+    ]
+    vehicles = [
+        {"vehicle": "Strada 01", "plate": "QWE-4J21", "driver": "Carlos Mendes", "distance": "1.486 km", "fuel": "11,6 km/L", "cost": "R$ 3.248,20", "maintenance": "Em dia", "status": "good"},
+        {"vehicle": "Saveiro 02", "plate": "RTY-8A13", "driver": "Ana Paula", "distance": "1.279 km", "fuel": "10,9 km/L", "cost": "R$ 3.510,40", "maintenance": "Vence em 220 km", "status": "warning"},
+        {"vehicle": "Oroch 03", "plate": "GHT-2D09", "driver": "Marcos Silva", "distance": "1.164 km", "fuel": "9,8 km/L", "cost": "R$ 3.126,80", "maintenance": "Agendada", "status": "scheduled"},
+        {"vehicle": "Fiorino 04", "plate": "HJK-7F42", "driver": "Sem motorista", "distance": "897 km", "fuel": "10,5 km/L", "cost": "R$ 2.231,30", "maintenance": "Em dia", "status": "good"},
+    ]
+    return render_template(
+        "reports_fleet.html",
+        metrics=metrics,
+        costs=costs,
+        fuel_history=fuel_history,
+        vehicles=vehicles,
+        periods=periods,
+        selected_period=selected_period,
+    )
+
+
+@main_bp.get("/relatorios/rotas")
+@login_required
+def route_reports():
+    selected_period, periods = _selected_report_period()
+    metrics = [
+        {"label": "Distância percorrida", "value": "4.826 km", "detail": "+8,4%", "trend": "up", "tone": "red"},
+        {"label": "Ordens concluídas", "value": "486", "detail": "92% do total", "trend": "up", "tone": "blue"},
+        {"label": "Aderência às rotas", "value": "91%", "detail": "+4 pontos", "trend": "up", "tone": "green"},
+        {"label": "Tempo médio em trânsito", "value": "2h17", "detail": "−12 min", "trend": "down", "tone": "yellow"},
+    ]
+    collaborators = [
+        {"name": "Carlos Mendes", "initials": "CM", "vehicle": "QWE-4J21", "distance": "1.486 km", "completed": 168, "completion": 96, "transit": "2h04", "service": "1h18", "lunch": "1h08", "deviations": 1, "tone": "red"},
+        {"name": "Ana Paula", "initials": "AP", "vehicle": "RTY-8A13", "distance": "1.279 km", "completed": 154, "completion": 92, "transit": "2h12", "service": "1h26", "lunch": "1h17", "deviations": 3, "tone": "blue"},
+        {"name": "Marcos Silva", "initials": "MS", "vehicle": "GHT-2D09", "distance": "1.164 km", "completed": 139, "completion": 86, "transit": "2h35", "service": "1h31", "lunch": "2h18", "deviations": 5, "tone": "yellow"},
+        {"name": "Rafael Lima", "initials": "RL", "vehicle": "HJK-7F42", "distance": "897 km", "completed": 125, "completion": 89, "transit": "2h21", "service": "1h22", "lunch": "1h12", "deviations": 0, "tone": "purple"},
+    ]
+    daily_times = [
+        {"day": "Seg", "minutes": 151, "height": 74},
+        {"day": "Ter", "minutes": 143, "height": 65},
+        {"day": "Qua", "minutes": 132, "height": 54},
+        {"day": "Qui", "minutes": 139, "height": 61},
+        {"day": "Sex", "minutes": 128, "height": 49},
+        {"day": "Sáb", "minutes": 112, "height": 35},
+    ]
+    return render_template(
+        "reports_routes.html",
+        metrics=metrics,
+        collaborators=collaborators,
+        daily_times=daily_times,
+        periods=periods,
+        selected_period=selected_period,
+    )

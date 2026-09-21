@@ -2,7 +2,7 @@
 
 Sistema web desenvolvido para o TCC **Otimização da Gestão de Equipes Externas por Meio de Monitoramento Geolocalizado e Análise Temporal de Rotas**.
 
-Nesta etapa estão implementadas a autenticação administrativa, a Home operacional e os módulos de Rotas e Frotas. Os dados exibidos são demonstrativos e estão preparados para serem substituídos pelas integrações com Cobli e IXC.
+Nesta etapa estão implementadas a autenticação administrativa, a Home operacional e os módulos de Rotas, Frotas e Relatórios. Os dados exibidos são demonstrativos e estão preparados para serem substituídos pelas integrações com Cobli e IXC.
 
 ## Funcionalidades disponíveis
 
@@ -28,6 +28,11 @@ Nesta etapa estão implementadas a autenticação administrativa, a Home operaci
 - Visão de custos por combustível, manutenção, multas e outros gastos.
 - Agenda das próximas manutenções.
 - Formulários para veículo, motorista, troca de óleo, abastecimento, multa, outro gasto e manutenção.
+- Visão geral dos relatórios com indicadores consolidados de operação, rotas e frota.
+- Relatório detalhado de Rotas com produtividade, deslocamentos, ordens, tempos e desvios por colaborador.
+- Relatório detalhado de Frotas com quilometragem, consumo, custos, multas e manutenções por veículo.
+- Gráficos de linha, barras horizontais e verticais e gráficos de rosca.
+- Filtro de período compartilhado entre os relatórios.
 
 ## Tecnologias
 
@@ -55,6 +60,7 @@ TCC-UaiRotas/
 │   ├── test_home.py
 │   ├── test_routes.py
 │   ├── test_fleet.py
+│   ├── test_reports.py
 │   └── test_models.py
 └── uairotas/
     ├── __init__.py
@@ -70,7 +76,10 @@ TCC-UaiRotas/
         ├── base.html
         ├── home.html
         ├── routes.html
-        └── fleet.html
+        ├── fleet.html
+        ├── reports_overview.html
+        ├── reports_routes.html
+        └── reports_fleet.html
 ```
 
 ## Como executar no Windows
@@ -139,7 +148,7 @@ Para executar com cobertura:
 pytest -q --cov=uairotas --cov-report=term-missing
 ```
 
-Resultado da versão atual: **36 testes aprovados e 93% de cobertura total**. Consulte também [`TEST_RESULTS.md`](TEST_RESULTS.md).
+Resultado da versão atual: **48 testes aprovados e 94% de cobertura total**. Consulte também [`TEST_RESULTS.md`](TEST_RESULTS.md).
 
 ## Próximas integrações
 

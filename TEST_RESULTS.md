@@ -1,11 +1,11 @@
 # Resultado dos testes
 
-Execução realizada em 18 de setembro de 2026 com Python 3.12.14.
+Execução realizada em 21 de setembro de 2026 com Python 3.12.14.
 
 ```text
-....................................                                     [100%]
-36 passed in 6.86s
-Cobertura total: 93%
+................................................                         [100%]
+48 passed in 9.75s
+Cobertura total: 94%
 ```
 
 ## Casos verificados
@@ -40,3 +40,12 @@ Cobertura total: 93%
 - Rejeição dos formulários sem campos obrigatórios.
 - Retorno 404 para tipos de registro desconhecidos.
 - Navegação da Home para o módulo de Frotas.
+
+- Proteção das três telas de Relatórios contra acesso sem autenticação.
+- Renderização do resumo geral e dos gráficos operacionais.
+- Navegação para os relatórios detalhados de Rotas e Frotas.
+- Exibição dos custos, consumo e manutenção por veículo.
+- Exibição da produtividade, tempos, desvios e alerta de almoço por colaborador.
+- Seleção dos períodos de 7, 30 e 90 dias e do ano de 2026.
+- Retorno seguro ao período de 30 dias quando o filtro é inválido.
+- Navegação da Home para o módulo de Relatórios.
