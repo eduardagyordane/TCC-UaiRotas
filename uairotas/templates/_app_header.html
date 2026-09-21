@@ -13,7 +13,7 @@
   <nav class="main-nav" data-main-nav aria-label="Navegação principal">
     <a class="main-nav__link{% if active_page == 'home' %} is-active{% endif %}" href="{{ url_for('main.home') }}"{% if active_page == 'home' %} aria-current="page"{% endif %}>Home</a>
     <a class="main-nav__link{% if active_page == 'routes' %} is-active{% endif %}" href="{{ url_for('main.routes') }}"{% if active_page == 'routes' %} aria-current="page"{% endif %}>Rotas</a>
-    <a class="main-nav__link" href="#" aria-label="Frota — em desenvolvimento">Frota</a>
+    <a class="main-nav__link{% if active_page == 'fleet' %} is-active{% endif %}" href="{{ url_for('main.fleet') }}"{% if active_page == 'fleet' %} aria-current="page"{% endif %}>Frota</a>
     <a class="main-nav__link" href="#" aria-label="Relatórios — em desenvolvimento">Relatórios</a>
     <a class="main-nav__link" href="#" aria-label="Usuários — em desenvolvimento">Usuários</a>
   </nav>

@@ -3,9 +3,9 @@
 Execução realizada em 18 de setembro de 2026 com Python 3.12.14.
 
 ```text
-......................                                                   [100%]
-22 passed in 3.91s
-Cobertura total: 91%
+....................................                                     [100%]
+36 passed in 6.86s
+Cobertura total: 93%
 ```
 
 ## Casos verificados
@@ -32,3 +32,11 @@ Cobertura total: 91%
 - Filtro de ordens por situação.
 - Estado vazio quando nenhuma ordem corresponde aos filtros.
 - Navegação da Home para o módulo de Rotas.
+- Proteção do módulo de Frotas contra acesso sem autenticação.
+- Renderização do resumo, veículos, custos e manutenções da frota.
+- Exibição das datas e alertas de troca de óleo.
+- Presença dos sete formulários de inclusão da frota.
+- Registro validado de veículo, motorista, troca de óleo, abastecimento, multa, gasto e manutenção.
+- Rejeição dos formulários sem campos obrigatórios.
+- Retorno 404 para tipos de registro desconhecidos.
+- Navegação da Home para o módulo de Frotas.

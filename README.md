@@ -2,7 +2,7 @@
 
 Sistema web desenvolvido para o TCC **Otimização da Gestão de Equipes Externas por Meio de Monitoramento Geolocalizado e Análise Temporal de Rotas**.
 
-Nesta etapa estão implementadas a autenticação administrativa, a Home operacional e o módulo de Rotas. Os dados exibidos são demonstrativos e estão preparados para serem substituídos pelas integrações com Cobli e IXC.
+Nesta etapa estão implementadas a autenticação administrativa, a Home operacional e os módulos de Rotas e Frotas. Os dados exibidos são demonstrativos e estão preparados para serem substituídos pelas integrações com Cobli e IXC.
 
 ## Funcionalidades disponíveis
 
@@ -23,6 +23,11 @@ Nesta etapa estão implementadas a autenticação administrativa, a Home operaci
 - Filtros por data, colaborador e situação da ordem de serviço.
 - Ordens com cliente, endereço e tipo de serviço.
 - Locais de interesse destacados por ícones.
+- Módulo de Frotas protegido por autenticação, com resumo de veículos, técnicos, quilometragem, gasolina e locais de interesse.
+- Relação de veículos com motorista, odômetro, última e próxima troca de óleo.
+- Visão de custos por combustível, manutenção, multas e outros gastos.
+- Agenda das próximas manutenções.
+- Formulários para veículo, motorista, troca de óleo, abastecimento, multa, outro gasto e manutenção.
 
 ## Tecnologias
 
@@ -49,6 +54,7 @@ TCC-UaiRotas/
 │   ├── test_auth.py
 │   ├── test_home.py
 │   ├── test_routes.py
+│   ├── test_fleet.py
 │   └── test_models.py
 └── uairotas/
     ├── __init__.py
@@ -63,7 +69,8 @@ TCC-UaiRotas/
         ├── _app_header.html
         ├── base.html
         ├── home.html
-        └── routes.html
+        ├── routes.html
+        └── fleet.html
 ```
 
 ## Como executar no Windows
@@ -132,8 +139,10 @@ Para executar com cobertura:
 pytest -q --cov=uairotas --cov-report=term-missing
 ```
 
-Resultado da versão atual: **22 testes aprovados e 91% de cobertura total**. Consulte também [`TEST_RESULTS.md`](TEST_RESULTS.md).
+Resultado da versão atual: **36 testes aprovados e 93% de cobertura total**. Consulte também [`TEST_RESULTS.md`](TEST_RESULTS.md).
 
 ## Próximas integrações
 
 Os objetos demonstrativos definidos em `uairotas/main.py` serão substituídos gradualmente por consultas ao banco local, alimentado pelas APIs da Cobli e do IXC. As credenciais dessas APIs deverão permanecer somente no backend, por meio de variáveis de ambiente.
+
+Nesta primeira entrega, os formulários de Frotas validam os campos no servidor e apresentam a confirmação da operação, mas ainda não persistem os registros. A criação das tabelas e modelos de frota será realizada após a aprovação da interface e dos fluxos.

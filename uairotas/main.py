@@ -1,6 +1,6 @@
 from datetime import date
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
 
@@ -200,3 +200,122 @@ def routes():
         selected_status=selected_status,
         selected_date=selected_date,
     )
+
+
+@main_bp.get("/frota")
+@login_required
+def fleet():
+    summary = [
+        {"label": "Veículos cadastrados", "value": "18", "detail": "16 ativos", "tone": "wine"},
+        {"label": "Técnicos vinculados", "value": "12", "detail": "3 equipes", "tone": "blue"},
+        {"label": "Quilometragem no mês", "value": "4.826 km", "detail": "+8,4%", "tone": "yellow"},
+        {"label": "Valor da gasolina", "value": "R$ 6,19", "detail": "último registro", "tone": "green"},
+        {"label": "Locais de interesse", "value": "12", "detail": "4 categorias", "tone": "purple"},
+    ]
+
+    vehicles = [
+        {
+            "plate": "QWE-4J21",
+            "nickname": "Strada 01",
+            "model": "Fiat Strada Freedom 2023",
+            "driver": "Carlos Mendes",
+            "technician": "Carlos Mendes",
+            "odometer": "48.320 km",
+            "last_oil": "12/06/2026",
+            "next_oil": "50.000 km",
+            "status": "Em rota",
+            "status_key": "route",
+        },
+        {
+            "plate": "RTY-8A13",
+            "nickname": "Saveiro 02",
+            "model": "VW Saveiro Robust 2022",
+            "driver": "Ana Paula",
+            "technician": "Ana Paula",
+            "odometer": "61.780 km",
+            "last_oil": "03/05/2026",
+            "next_oil": "Vence em 220 km",
+            "status": "Atenção",
+            "status_key": "warning",
+        },
+        {
+            "plate": "GHT-2D09",
+            "nickname": "Oroch 03",
+            "model": "Renault Oroch Pro 2021",
+            "driver": "Marcos Silva",
+            "technician": "Marcos Silva",
+            "odometer": "72.405 km",
+            "last_oil": "22/07/2026",
+            "next_oil": "75.000 km",
+            "status": "Parado",
+            "status_key": "stopped",
+        },
+        {
+            "plate": "HJK-7F42",
+            "nickname": "Fiorino 04",
+            "model": "Fiat Fiorino Endurance 2022",
+            "driver": "Sem motorista",
+            "technician": "Sem vínculo",
+            "odometer": "39.110 km",
+            "last_oil": "18/08/2026",
+            "next_oil": "42.000 km",
+            "status": "Disponível",
+            "status_key": "available",
+        },
+    ]
+
+    costs = [
+        {"label": "Combustível", "value": "R$ 8.420,30", "percent": 72, "tone": "red"},
+        {"label": "Manutenções", "value": "R$ 2.180,00", "percent": 39, "tone": "yellow"},
+        {"label": "Multas", "value": "R$ 586,40", "percent": 16, "tone": "blue"},
+        {"label": "Outros gastos", "value": "R$ 930,00", "percent": 24, "tone": "purple"},
+    ]
+
+    maintenance = [
+        {"vehicle": "RTY-8A13", "type": "Troca de óleo", "date": "20/09/2026", "value": "R$ 349,90", "urgency": "Alta"},
+        {"vehicle": "GHT-2D09", "type": "Revisão preventiva", "date": "26/09/2026", "value": "R$ 680,00", "urgency": "Média"},
+        {"vehicle": "HJK-7F42", "type": "Alinhamento", "date": "02/10/2026", "value": "R$ 180,00", "urgency": "Normal"},
+    ]
+
+    return render_template(
+        "fleet.html",
+        summary=summary,
+        vehicles=vehicles,
+        costs=costs,
+        maintenance=maintenance,
+        today=date.today().isoformat(),
+    )
+
+
+@main_bp.post("/frota/registros/<record_type>")
+@login_required
+def create_fleet_record(record_type):
+    required_fields = {
+        "veiculo": ("placa_chassi", "apelido", "marca", "modelo", "odometro"),
+        "motorista": ("nome", "contato", "cpf", "cnh"),
+        "oleo": ("veiculo", "ultima_troca", "proxima_troca", "quilometragem", "valor"),
+        "combustivel": ("data", "veiculo", "litros", "valor_litro"),
+        "multa": ("data", "veiculo", "motorista", "tipo", "descricao", "valor"),
+        "gasto": ("data", "tipo", "descricao", "valor"),
+        "manutencao": ("data", "veiculo", "tipo", "valor"),
+    }
+    success_messages = {
+        "veiculo": "Veículo registrado com sucesso.",
+        "motorista": "Motorista registrado com sucesso.",
+        "oleo": "Troca de óleo registrada com sucesso.",
+        "combustivel": "Abastecimento registrado com sucesso.",
+        "multa": "Multa registrada com sucesso.",
+        "gasto": "Gasto registrado com sucesso.",
+        "manutencao": "Manutenção agendada com sucesso.",
+    }
+
+    if record_type not in required_fields:
+        abort(404)
+
+    missing = [field for field in required_fields[record_type] if not request.form.get(field, "").strip()]
+    if missing:
+        flash("Preencha todos os campos obrigatórios antes de salvar.", "error")
+        return redirect(url_for("main.fleet"))
+
+    flash(success_messages[record_type], "success")
+    return redirect(url_for("main.fleet"))

@@ -147,3 +147,32 @@ if (interactiveMap) {
     });
   });
 }
+
+const fleetDialogOpeners = document.querySelectorAll("[data-open-fleet-dialog]");
+const fleetDialogClosers = document.querySelectorAll("[data-close-fleet-dialog]");
+
+fleetDialogOpeners.forEach((opener) => {
+  opener.addEventListener("click", () => {
+    const dialog = document.getElementById(opener.dataset.openFleetDialog);
+    if (!dialog) return;
+
+    const createMenu = opener.closest(".fleet-create-menu");
+    if (createMenu) createMenu.removeAttribute("open");
+    dialog.showModal();
+    const firstField = dialog.querySelector("input:not([type='hidden']), select, textarea");
+    if (firstField) firstField.focus();
+  });
+});
+
+fleetDialogClosers.forEach((closer) => {
+  closer.addEventListener("click", () => closer.closest("dialog")?.close());
+});
+
+document.querySelectorAll(".fleet-dialog").forEach((dialog) => {
+  dialog.addEventListener("click", (event) => {
+    const bounds = dialog.getBoundingClientRect();
+    const clickedBackdrop = event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom;
+    if (clickedBackdrop) dialog.close();
+  });
+});
