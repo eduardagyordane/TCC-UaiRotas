@@ -1,14 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Relatório de Rotas | UaiRotas{% endblock %}{% block body_class %}app-page{% endblock %}
+{% block title %}Relatório de Rotas | UaiRotas{% endblock %}
+{% block body_class %}app-page{% endblock %}
+
 {% block content %}
-{% set active_page = "reports" %}{% include "_app_header.html" %}
+{% set active_page = "reports" %}
+{% include "_app_header.html" %}
 <main class="reports-shell">
-  {% set report_title = "Relatório de rotas" %}{% set report_description = "Produtividade, deslocamentos e tempos das equipes externas." %}{% set report_tab = "routes" %}{% include "_report_page_header.html" %}
-  <section class="report-metric-grid" aria-label="Indicadores das rotas">{% for metric in metrics %}<article class="report-metric report-metric--{{ metric.tone }}"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small class="report-trend report-trend--{{ metric.trend }}">{{ metric.detail }} <i>no período</i></small></article>{% endfor %}</section>
-  <section class="report-detail-grid report-detail-grid--routes">
-    <article class="panel report-productivity-panel"><header class="panel-header"><div><h2>Produtividade por colaborador</h2><p>Ordens concluídas e meta alcançada</p></div></header><div class="horizontal-bar-chart" role="img" aria-label="Carlos concluiu 168 ordens, Ana 154, Marcos 139 e Rafael 125">{% for person in collaborators %}<div class="horizontal-bar-chart__row"><span>{{ person.name }}</span><div><i class="bar-tone--{{ person.tone }}" style="--bar-width:{{ person.completion }}%"></i></div><strong>{{ person.completed }}</strong></div>{% endfor %}</div></article>
-    <article class="panel report-transit-panel"><header class="panel-header"><div><h2>Tempo médio em trânsito</h2><p>Minutos por dia da semana</p></div><strong class="report-highlight">2h17</strong></header><div class="vertical-bar-chart vertical-bar-chart--time" role="img" aria-label="Tempo médio em trânsito caiu de 151 minutos na segunda para 112 minutos no sábado">{% for item in daily_times %}<div class="vertical-bar-chart__item"><span class="vertical-bar-chart__value">{{ item.minutes }} min</span><div class="vertical-bar-chart__track"><i style="--bar-height:{{ item.height }}%"></i></div><strong>{{ item.day }}</strong></div>{% endfor %}</div></article>
+  {% set report_title = "Relatório de rotas" %}
+  {% set report_description = "Produtividade, deslocamentos e tempos das equipes externas." %}
+  {% set report_tab = "routes" %}
+  {% include "_report_page_header.html" %}
+
+  <section class="report-metric-grid" aria-label="Indicadores das rotas">
+    {% for metric in metrics %}<article class="report-metric report-metric--{{ metric.tone }}"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small class="report-trend report-trend--{{ metric.trend }}">{{ metric.detail }} <i>no período</i></small></article>{% endfor %}
   </section>
-  <section class="panel report-table-panel"><header class="panel-header"><div><h2>Detalhamento por colaborador</h2><p>Indicadores de rota e atendimento no período</p></div><span class="result-count">4 colaboradores</span></header><div class="table-scroll"><table class="report-table report-table--routes"><thead><tr><th>Colaborador</th><th>Veículo</th><th>Distância</th><th>OS concluídas</th><th>Em trânsito</th><th>No cliente</th><th>Almoço médio</th><th>Desvios</th></tr></thead><tbody>{% for person in collaborators %}<tr><td><span class="report-person"><i class="report-person--{{ person.tone }}">{{ person.initials }}</i><strong>{{ person.name }}</strong></span></td><td>{{ person.vehicle }}</td><td>{{ person.distance }}</td><td><strong>{{ person.completed }}</strong> <small>{{ person.completion }}%</small></td><td>{{ person.transit }}</td><td>{{ person.service }}</td><td><span{% if person.lunch == '2h18' %} class="report-lunch-alert"{% endif %}>{{ person.lunch }}</span></td><td><span class="deviation-count{% if person.deviations > 3 %} deviation-count--high{% endif %}">{{ person.deviations }}</span></td></tr>{% endfor %}</tbody></table></div></section>
+
+  <section class="report-detail-grid report-detail-grid--routes">
+    <article class="panel report-productivity-panel">
+      <header class="panel-header"><div><h2>Produtividade por colaborador</h2><p>Ordens concluídas e meta alcançada</p></div></header>
+      <div class="horizontal-bar-chart" role="img" aria-label="Carlos concluiu 168 ordens, Ana 154, Marcos 139 e Rafael 125">
+        {% for person in collaborators %}<div class="horizontal-bar-chart__row"><span>{{ person.name }}</span><div><i class="bar-tone--{{ person.tone }}" style="--bar-width: {{ person.completion }}%"></i></div><strong>{{ person.completed }}</strong></div>{% endfor %}
+      </div>
+    </article>
+    <article class="panel report-transit-panel">
+      <header class="panel-header"><div><h2>Tempo médio em trânsito</h2><p>Minutos por dia da semana</p></div><strong class="report-highlight">2h17</strong></header>
+      <div class="vertical-bar-chart vertical-bar-chart--time" role="img" aria-label="Tempo médio em trânsito caiu de 151 minutos na segunda para 112 minutos no sábado">{% for item in daily_times %}<div class="vertical-bar-chart__item"><span class="vertical-bar-chart__value">{{ item.minutes }} min</span><div class="vertical-bar-chart__track"><i style="--bar-height: {{ item.height }}%"></i></div><strong>{{ item.day }}</strong></div>{% endfor %}</div>
+    </article>
+  </section>
+
+  <section class="panel report-table-panel">
+    <header class="panel-header"><div><h2>Detalhamento por colaborador</h2><p>Indicadores de rota e atendimento no período</p></div><span class="result-count">4 colaboradores</span></header>
+    <div class="table-scroll"><table class="report-table report-table--routes"><thead><tr><th>Colaborador</th><th>Veículo</th><th>Distância</th><th>OS concluídas</th><th>Em trânsito</th><th>No cliente</th><th>Almoço médio</th><th>Desvios</th></tr></thead><tbody>{% for person in collaborators %}<tr{% if person.lunch == '2h18' or person.deviations > 3 %} data-audible-alert data-alert-id="route-report-{{ person.initials | lower }}"{% endif %}><td><span class="report-person"><i class="report-person--{{ person.tone }}">{{ person.initials }}</i><strong>{{ person.name }}</strong></span></td><td>{{ person.vehicle }}</td><td>{{ person.distance }}</td><td><strong>{{ person.completed }}</strong> <small>{{ person.completion }}%</small></td><td>{{ person.transit }}</td><td>{{ person.service }}</td><td><span{% if person.lunch == '2h18' %} class="report-lunch-alert"{% endif %}>{{ person.lunch }}</span></td><td><span class="deviation-count{% if person.deviations > 3 %} deviation-count--high{% endif %}">{{ person.deviations }}</span></td></tr>{% endfor %}</tbody></table></div>
+  </section>
 </main>
 {% endblock %}

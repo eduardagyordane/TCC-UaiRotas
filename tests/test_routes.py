@@ -1,7 +1,7 @@
 def login(client):
     return client.post(
         "/login",
-        data={"email": "admin@uairotas.com", "password": "SenhaSegura123!"},
+        data={"email": "admin@example.invalid", "password": "senha-de-teste-sem-segredo"},
     )
 
 
@@ -18,10 +18,11 @@ def test_routes_page_renders_map_orders_and_collaborators(client):
 
     assert response.status_code == 200
     assert b"Rotas e ordens de servi" in response.data
-    assert b"data-interactive-map" in response.data
-    assert b"Carlos Mendes" in response.data
-    assert b"Ana Paula" in response.data
-    assert b"Marcos Silva" in response.data
+    assert b'data-mapbox-map' in response.data
+    assert b'id="routes-mapbox-map"' in response.data
+    assert "Técnico Alfa".encode() in response.data
+    assert "Técnica Beta".encode() in response.data
+    assert "Técnico Gama".encode() in response.data
     assert b"OS 10482" in response.data
 
 
@@ -29,8 +30,8 @@ def test_routes_page_contains_ixc_order_details(client):
     login(client)
     response = client.get("/rotas")
 
-    assert b"Marina Oliveira" in response.data
-    assert b"Rua Major Gote" in response.data
+    assert b"Cliente Demonstrativo A" in response.data
+    assert b"Ponto demonstrativo A" in response.data
     assert b"Instala" in response.data
 
 
@@ -52,7 +53,7 @@ def test_routes_filter_by_collaborator(client):
     assert response.status_code == 200
     assert b"OS 10496" in response.data
     assert b"OS 10503" in response.data
-    assert b"Marina Oliveira" not in response.data
+    assert b"Cliente Demonstrativo A" not in response.data
 
 
 def test_routes_filter_by_status(client):

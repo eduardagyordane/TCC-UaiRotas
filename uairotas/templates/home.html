@@ -45,7 +45,13 @@
         <div><h2>Equipes em campo</h2><p>Localização mais recente dos veículos</p></div>
         <a href="{{ url_for('main.routes') }}">Ver rotas <span aria-hidden="true">→</span></a>
       </header>
-      <div class="map-canvas" role="img" aria-label="Mapa ilustrativo com três veículos em rota e locais de interesse">
+      <div class="map-canvas mapbox-map-shell" aria-label="Mapa Mapbox com veículos, rotas e locais de interesse">
+        <div id="home-mapbox-map" class="mapbox-map-canvas" data-mapbox-map data-map-source="home-map-data"></div>
+        <div class="mapbox-map-message" data-mapbox-map-message hidden></div>
+        <script id="home-map-data" type="application/json">{{ map_data | tojson }}</script>
+        <div class="mapbox-legend" aria-label="Legenda do mapa"><span><i class="mapbox-legend__vehicle">🚗</i>Veículo</span><span><i class="mapbox-legend__order">1</i>Ordem</span><span><i class="mapbox-legend__place">◆</i>Interesse</span></div>
+      </div>
+      <div hidden aria-hidden="true">
         <svg class="map-roads" viewBox="0 0 900 460" preserveAspectRatio="none" aria-hidden="true">
           <path class="road road--wide" d="M-20 360C160 300 250 410 420 310S700 210 930 260"/>
           <path class="road" d="M100-20c40 120 160 130 150 260s80 170 160 240"/>
@@ -58,14 +64,14 @@
         <div class="map-neighborhood map-neighborhood--one">Centro</div>
         <div class="map-neighborhood map-neighborhood--two">Caiçaras</div>
         <div class="map-neighborhood map-neighborhood--three">Lagoa Grande</div>
-        <button class="map-marker map-marker--one" type="button" aria-label="Carlos Mendes, em atendimento">
-          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Carlos Mendes</strong><small>Em atendimento</small></span>
+        <button class="map-marker map-marker--one" type="button" aria-label="Técnico Alfa, em atendimento">
+          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Técnico Alfa</strong><small>Em atendimento</small></span>
         </button>
-        <button class="map-marker map-marker--two" type="button" aria-label="Ana Paula, a caminho">
-          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Ana Paula</strong><small>A caminho</small></span>
+        <button class="map-marker map-marker--two" type="button" aria-label="Técnica Beta, a caminho">
+          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Técnica Beta</strong><small>A caminho</small></span>
         </button>
-        <button class="map-marker map-marker--three" type="button" aria-label="Rafael Lima, disponível">
-          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Rafael Lima</strong><small>Disponível</small></span>
+        <button class="map-marker map-marker--three" type="button" aria-label="Técnico Delta, disponível">
+          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Técnico Delta</strong><small>Disponível</small></span>
         </button>
         <span class="interest-pin interest-pin--one" title="Escritório Uai Telecom" aria-label="Local de interesse: escritório Uai Telecom">U</span>
         <span class="interest-pin interest-pin--two" title="Almoxarifado" aria-label="Local de interesse: almoxarifado">A</span>
@@ -80,7 +86,7 @@
       <header class="panel-header"><div><h2>Alertas</h2><p>Ocorrências que exigem atenção</p></div><span class="panel-count">3</span></header>
       <div class="alert-list">
         {% for alert in alerts %}
-          <article class="alert-item alert-item--{{ alert.level }}">
+          <article class="alert-item alert-item--{{ alert.level }}" data-audible-alert data-alert-id="home-{{ alert.level }}-{{ loop.index }}">
             <span class="alert-item__icon" aria-hidden="true">!</span>
             <div><strong>{{ alert.title }}</strong><p>{{ alert.description }}</p><small>{{ alert.time }}</small></div>
           </article>

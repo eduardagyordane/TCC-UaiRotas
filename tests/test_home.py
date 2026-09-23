@@ -1,7 +1,7 @@
 def login(client):
     return client.post(
         "/login",
-        data={"email": "admin@uairotas.com", "password": "SenhaSegura123!"},
+        data={"email": "admin@example.invalid", "password": "senha-de-teste-sem-segredo"},
     )
 
 
@@ -28,9 +28,9 @@ def test_home_renders_service_orders(client):
     response = client.get("/")
 
     assert b"OS 10482" in response.data
-    assert b"Marina Oliveira" in response.data
+    assert b"Cliente Demonstrativo A" in response.data
     assert b"Instala" in response.data
-    assert b"Carlos Mendes" in response.data
+    assert "Técnico Alfa".encode() in response.data
 
 
 def test_home_renders_lunch_alert(client):

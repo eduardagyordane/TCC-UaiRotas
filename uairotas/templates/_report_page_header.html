@@ -1,5 +1,9 @@
 <section class="report-heading" aria-labelledby="report-title">
-  <div><p class="dashboard-kicker">Análises operacionais</p><h1 id="report-title">{{ report_title }}</h1><p>{{ report_description }}</p></div>
+  <div>
+    <p class="dashboard-kicker">Análises operacionais</p>
+    <h1 id="report-title">{{ report_title }}</h1>
+    <p>{{ report_description }}</p>
+  </div>
   <form class="report-period-filter" method="get">
     <label for="report-period">Período</label>
     <select id="report-period" name="periodo" data-report-period>
@@ -8,6 +12,7 @@
     <button type="submit">Aplicar</button>
   </form>
 </section>
+
 <nav class="report-tabs" aria-label="Tipos de relatório">
   <a href="{{ url_for('main.reports', periodo=selected_period) }}"{% if report_tab == 'overview' %} class="is-active" aria-current="page"{% endif %}>Visão geral</a>
   <a href="{{ url_for('main.route_reports', periodo=selected_period) }}"{% if report_tab == 'routes' %} class="is-active" aria-current="page"{% endif %}>Rotas</a>

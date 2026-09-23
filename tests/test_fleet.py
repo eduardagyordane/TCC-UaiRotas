@@ -4,7 +4,7 @@ import pytest
 def login(client):
     return client.post(
         "/login",
-        data={"email": "admin@uairotas.com", "password": "SenhaSegura123!"},
+        data={"email": "admin@example.invalid", "password": "senha-de-teste-sem-segredo"},
     )
 
 
@@ -25,7 +25,7 @@ def test_fleet_page_renders_summary_vehicles_and_costs(client):
     assert b"4.826 km" in response.data
     assert b"R$ 6,19" in response.data
     assert b"Locais de interesse" in response.data
-    assert b"QWE-4J21" in response.data
+    assert b"DEM-0001" in response.data
     assert "Custos do mês".encode() in response.data
 
 
@@ -69,13 +69,13 @@ def test_fleet_contains_all_creation_dialogs_and_fields(client):
 @pytest.mark.parametrize(
     ("record_type", "payload", "success_message"),
     [
-        ("veiculo", {"placa_chassi": "ABC-1D23", "apelido": "Carro 05", "marca": "Fiat", "modelo": "Strada", "odometro": "10000"}, "Veículo registrado com sucesso."),
-        ("motorista", {"nome": "João Silva", "contato": "34999999999", "cpf": "00000000000", "cnh": "123456789"}, "Motorista registrado com sucesso."),
-        ("oleo", {"veiculo": "ABC-1D23", "ultima_troca": "2026-09-18", "proxima_troca": "2027-01-18", "quilometragem": "10000", "valor": "349.90"}, "Troca de óleo registrada com sucesso."),
-        ("combustivel", {"data": "2026-09-18", "veiculo": "ABC-1D23", "litros": "40", "valor_litro": "6.19"}, "Abastecimento registrado com sucesso."),
-        ("multa", {"data": "2026-09-18", "veiculo": "ABC-1D23", "motorista": "João Silva", "tipo": "Velocidade", "descricao": "Teste", "valor": "195.23"}, "Multa registrada com sucesso."),
+        ("veiculo", {"placa_chassi": "VEICULO-FICTICIO", "apelido": "Carro 05", "marca": "Fiat", "modelo": "Strada", "odometro": "10000"}, "Veículo registrado com sucesso."),
+        ("motorista", {"nome": "Motorista Fictício", "contato": "CONTATO-FICTICIO", "cpf": "CPF-FICTICIO", "cnh": "CNH-FICTICIA"}, "Motorista registrado com sucesso."),
+        ("oleo", {"veiculo": "VEICULO-FICTICIO", "ultima_troca": "2026-09-18", "proxima_troca": "2027-01-18", "quilometragem": "10000", "valor": "349.90"}, "Troca de óleo registrada com sucesso."),
+        ("combustivel", {"data": "2026-09-18", "veiculo": "VEICULO-FICTICIO", "litros": "40", "valor_litro": "6.19"}, "Abastecimento registrado com sucesso."),
+        ("multa", {"data": "2026-09-18", "veiculo": "VEICULO-FICTICIO", "motorista": "Motorista Fictício", "tipo": "Velocidade", "descricao": "Teste", "valor": "195.23"}, "Multa registrada com sucesso."),
         ("gasto", {"data": "2026-09-18", "tipo": "Pedágio", "descricao": "Viagem", "valor": "18.50"}, "Gasto registrado com sucesso."),
-        ("manutencao", {"data": "2026-09-20", "veiculo": "ABC-1D23", "tipo": "Revisão", "valor": "600"}, "Manutenção agendada com sucesso."),
+        ("manutencao", {"data": "2026-09-20", "veiculo": "VEICULO-FICTICIO", "tipo": "Revisão", "valor": "600"}, "Manutenção agendada com sucesso."),
     ],
 )
 def test_create_fleet_records(client, record_type, payload, success_message):
@@ -94,7 +94,7 @@ def test_create_fleet_record_validates_required_fields(client):
     login(client)
     response = client.post(
         "/frota/registros/veiculo",
-        data={"placa_chassi": "ABC-1D23"},
+        data={"placa_chassi": "VEICULO-FICTICIO"},
         follow_redirects=True,
     )
 

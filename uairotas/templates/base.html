@@ -4,15 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="UaiRotas — gestão de equipes externas e frota.">
+  <meta name="mapbox-access-token" content="{{ config.get('MAPBOX_ACCESS_TOKEN', '') }}">
   <title>{% block title %}UaiRotas{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% block content %}{% endblock %}
   <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.js" defer></script>
+  <script src="{{ url_for('static', filename='js/maps.js') }}" defer></script>
 </body>
 </html>
-

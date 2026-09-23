@@ -2,6 +2,7 @@ import os
 
 import click
 from flask import Flask
+from sqlalchemy import inspect, text
 from werkzeug.security import generate_password_hash
 
 from .config import Config
@@ -20,9 +21,34 @@ def create_app(config_object=Config):
     from .auth import auth_bp
     from .main import main_bp
     from .models import User
+    from .users import users_bp
 
     app.register_blueprint(auth_bp)
+    app.register_blueprint(users_bp)
     app.register_blueprint(main_bp)
+
+    def ensure_user_profile_columns():
+        """Adiciona os campos de perfil em bancos criados antes do módulo de usuários."""
+        inspector = inspect(db.engine)
+        if "users" not in inspector.get_table_names():
+            return
+
+        existing_columns = {column["name"] for column in inspector.get_columns("users")}
+        profile_columns = {
+            "phone": "VARCHAR(20)",
+            "address": "VARCHAR(255)",
+            "cpf": "VARCHAR(11)",
+            "birth_date": "DATE",
+        }
+        for column_name, column_type in profile_columns.items():
+            if column_name not in existing_columns:
+                db.session.execute(
+                    text(f"ALTER TABLE users ADD COLUMN {column_name} {column_type}")
+                )
+        db.session.execute(
+            text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_cpf ON users (cpf)")
+        )
+        db.session.commit()
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -32,6 +58,7 @@ def create_app(config_object=Config):
     def init_db_command():
         """Cria as tabelas do banco de dados."""
         db.create_all()
+        ensure_user_profile_columns()
         click.echo("Banco de dados inicializado.")
 
     @app.cli.command("create-admin")
@@ -56,4 +83,3 @@ def create_app(config_object=Config):
         click.echo("Administrador criado com sucesso.")
 
     return app
-

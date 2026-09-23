@@ -7,6 +7,68 @@ from flask_login import login_required
 main_bp = Blueprint("main", __name__)
 
 
+def _operational_map_data():
+    """Dados demonstrativos; serão substituídos por Cobli e IXC."""
+    return {
+        "demo": True,
+        "center": {"lat": -18.5789, "lng": -46.5181},
+        "zoom": 13,
+        "routes": [
+            {
+                "id": "carlos",
+                "name": "Técnico Alfa",
+                "color": "#d9233f",
+                "path": [
+                    {"lat": -18.6042, "lng": -46.5350},
+                    {"lat": -18.5934, "lng": -46.5272},
+                    {"lat": -18.5826, "lng": -46.5189},
+                    {"lat": -18.5718, "lng": -46.5078},
+                ],
+            },
+            {
+                "id": "ana",
+                "name": "Técnica Beta",
+                "color": "#2d78b7",
+                "path": [
+                    {"lat": -18.5617, "lng": -46.4934},
+                    {"lat": -18.5702, "lng": -46.5061},
+                    {"lat": -18.5786, "lng": -46.5210},
+                    {"lat": -18.5888, "lng": -46.5370},
+                ],
+            },
+            {
+                "id": "marcos",
+                "name": "Técnico Gama",
+                "color": "#d18d14",
+                "path": [
+                    {"lat": -18.5996, "lng": -46.5091},
+                    {"lat": -18.5890, "lng": -46.5054},
+                    {"lat": -18.5791, "lng": -46.4980},
+                    {"lat": -18.5684, "lng": -46.4862},
+                ],
+            },
+        ],
+        "vehicles": [
+            {"routeId": "carlos", "name": "Técnico Alfa", "status": "Em atendimento", "lat": -18.5718, "lng": -46.5078},
+            {"routeId": "ana", "name": "Técnica Beta", "status": "A caminho", "lat": -18.5786, "lng": -46.5210},
+            {"routeId": "marcos", "name": "Técnico Gama", "status": "Almoço há 2h18", "lat": -18.5791, "lng": -46.4980, "alert": True},
+        ],
+        "orders": [
+            {"routeId": "carlos", "label": "1", "code": "OS 10482", "lat": -18.5826, "lng": -46.5189},
+            {"routeId": "carlos", "label": "2", "code": "OS 10491", "lat": -18.5718, "lng": -46.5078},
+            {"routeId": "ana", "label": "1", "code": "OS 10496", "lat": -18.5702, "lng": -46.5061},
+            {"routeId": "ana", "label": "2", "code": "OS 10503", "lat": -18.5888, "lng": -46.5370},
+            {"routeId": "marcos", "label": "3", "code": "OS 10511", "lat": -18.5684, "lng": -46.4862},
+        ],
+        "places": [
+            {"name": "Escritório Uai Telecom", "kind": "Escritório", "lat": -18.5789, "lng": -46.5181},
+            {"name": "Almoxarifado", "kind": "Almoxarifado", "lat": -18.5921, "lng": -46.5207},
+            {"name": "Local de almoço", "kind": "Almoço", "lat": -18.5791, "lng": -46.4980},
+            {"name": "Posto credenciado", "kind": "Posto", "lat": -18.5660, "lng": -46.5129},
+        ],
+    }
+
+
 @main_bp.get("/")
 @login_required
 def home():
@@ -20,27 +82,27 @@ def home():
     service_orders = [
         {
             "code": "OS 10482",
-            "customer": "Marina Oliveira",
+            "customer": "Cliente Demonstrativo A",
             "service": "Instalação de fibra",
-            "technician": "Carlos Mendes",
+            "technician": "Técnico Alfa",
             "time": "08:30",
             "status": "Em atendimento",
             "status_key": "progress",
         },
         {
             "code": "OS 10496",
-            "customer": "Mercado São Lucas",
+            "customer": "Cliente Demonstrativo B",
             "service": "Manutenção de enlace",
-            "technician": "Ana Paula",
+            "technician": "Técnica Beta",
             "time": "10:00",
             "status": "A caminho",
             "status_key": "route",
         },
         {
             "code": "OS 10503",
-            "customer": "João Batista",
+            "customer": "Cliente Demonstrativo C",
             "service": "Suporte técnico",
-            "technician": "Rafael Lima",
+            "technician": "Técnico Delta",
             "time": "11:30",
             "status": "Agendada",
             "status_key": "scheduled",
@@ -50,13 +112,13 @@ def home():
     alerts = [
         {
             "title": "Almoço acima de 2 horas",
-            "description": "Marcos Silva está parado há 2h18.",
+            "description": "Técnico Gama está parado há 2h18.",
             "time": "Agora",
             "level": "high",
         },
         {
             "title": "Manutenção próxima",
-            "description": "Veículo QWE-4J21 vence em 450 km.",
+            "description": "Veículo DEM-0001 vence em 450 km.",
             "time": "Há 18 min",
             "level": "medium",
         },
@@ -75,6 +137,7 @@ def home():
         service_orders=service_orders,
         alerts=alerts,
         today=today,
+        map_data=_operational_map_data(),
     )
 
 
@@ -84,8 +147,8 @@ def routes():
     collaborators = [
         {
             "id": "carlos",
-            "name": "Carlos Mendes",
-            "vehicle": "Fiat Strada · QWE-4J21",
+            "name": "Técnico Alfa",
+            "vehicle": "Fiat Strada · DEM-0001",
             "color": "#d9233f",
             "status": "Em atendimento",
             "status_key": "progress",
@@ -95,8 +158,8 @@ def routes():
         },
         {
             "id": "ana",
-            "name": "Ana Paula",
-            "vehicle": "VW Saveiro · RTY-8A13",
+            "name": "Técnica Beta",
+            "vehicle": "VW Saveiro · DEM-0002",
             "color": "#2d78b7",
             "status": "A caminho",
             "status_key": "route",
@@ -106,8 +169,8 @@ def routes():
         },
         {
             "id": "marcos",
-            "name": "Marcos Silva",
-            "vehicle": "Renault Oroch · GHT-2D09",
+            "name": "Técnico Gama",
+            "vehicle": "Renault Oroch · DEM-0003",
             "color": "#d18d14",
             "status": "Parado há 2h18",
             "status_key": "alert",
@@ -120,11 +183,11 @@ def routes():
     orders = [
         {
             "code": "OS 10482",
-            "customer": "Marina Oliveira",
-            "address": "Rua Major Gote, 945 — Centro",
+            "customer": "Cliente Demonstrativo A",
+            "address": "Ponto demonstrativo A — Centro",
             "service": "Instalação de fibra",
             "collaborator": "carlos",
-            "technician": "Carlos Mendes",
+            "technician": "Técnico Alfa",
             "time": "08:30",
             "status": "Em atendimento",
             "status_key": "progress",
@@ -132,11 +195,11 @@ def routes():
         },
         {
             "code": "OS 10491",
-            "customer": "Clínica Vida",
-            "address": "Av. Getúlio Vargas, 622 — Centro",
+            "customer": "Cliente Demonstrativo D",
+            "address": "Ponto demonstrativo B — Centro",
             "service": "Reparo de conexão",
             "collaborator": "carlos",
-            "technician": "Carlos Mendes",
+            "technician": "Técnico Alfa",
             "time": "10:20",
             "status": "Agendada",
             "status_key": "scheduled",
@@ -144,11 +207,11 @@ def routes():
         },
         {
             "code": "OS 10496",
-            "customer": "Mercado São Lucas",
-            "address": "Rua dos Guaranis, 130 — Caramuru",
+            "customer": "Cliente Demonstrativo B",
+            "address": "Ponto demonstrativo C — Caramuru",
             "service": "Manutenção de enlace",
             "collaborator": "ana",
-            "technician": "Ana Paula",
+            "technician": "Técnica Beta",
             "time": "10:00",
             "status": "A caminho",
             "status_key": "route",
@@ -156,11 +219,11 @@ def routes():
         },
         {
             "code": "OS 10503",
-            "customer": "João Batista",
-            "address": "Rua Formiga, 418 — Lagoa Grande",
+            "customer": "Cliente Demonstrativo C",
+            "address": "Ponto demonstrativo D — Lagoa Grande",
             "service": "Suporte técnico",
             "collaborator": "ana",
-            "technician": "Ana Paula",
+            "technician": "Técnica Beta",
             "time": "11:30",
             "status": "Agendada",
             "status_key": "scheduled",
@@ -168,11 +231,11 @@ def routes():
         },
         {
             "code": "OS 10511",
-            "customer": "Padaria Tradição",
-            "address": "Av. Brasil, 1510 — Caiçaras",
+            "customer": "Cliente Demonstrativo E",
+            "address": "Ponto demonstrativo E — Caiçaras",
             "service": "Troca de equipamento",
             "collaborator": "marcos",
-            "technician": "Marcos Silva",
+            "technician": "Técnico Gama",
             "time": "13:30",
             "status": "Atrasada",
             "status_key": "late",
@@ -199,6 +262,7 @@ def routes():
         selected_collaborator=selected_collaborator,
         selected_status=selected_status,
         selected_date=selected_date,
+        map_data=_operational_map_data(),
     )
 
 
@@ -215,11 +279,11 @@ def fleet():
 
     vehicles = [
         {
-            "plate": "QWE-4J21",
+            "plate": "DEM-0001",
             "nickname": "Strada 01",
             "model": "Fiat Strada Freedom 2023",
-            "driver": "Carlos Mendes",
-            "technician": "Carlos Mendes",
+            "driver": "Técnico Alfa",
+            "technician": "Técnico Alfa",
             "odometer": "48.320 km",
             "last_oil": "12/06/2026",
             "next_oil": "50.000 km",
@@ -227,11 +291,11 @@ def fleet():
             "status_key": "route",
         },
         {
-            "plate": "RTY-8A13",
+            "plate": "DEM-0002",
             "nickname": "Saveiro 02",
             "model": "VW Saveiro Robust 2022",
-            "driver": "Ana Paula",
-            "technician": "Ana Paula",
+            "driver": "Técnica Beta",
+            "technician": "Técnica Beta",
             "odometer": "61.780 km",
             "last_oil": "03/05/2026",
             "next_oil": "Vence em 220 km",
@@ -239,11 +303,11 @@ def fleet():
             "status_key": "warning",
         },
         {
-            "plate": "GHT-2D09",
+            "plate": "DEM-0003",
             "nickname": "Oroch 03",
             "model": "Renault Oroch Pro 2021",
-            "driver": "Marcos Silva",
-            "technician": "Marcos Silva",
+            "driver": "Técnico Gama",
+            "technician": "Técnico Gama",
             "odometer": "72.405 km",
             "last_oil": "22/07/2026",
             "next_oil": "75.000 km",
@@ -251,7 +315,7 @@ def fleet():
             "status_key": "stopped",
         },
         {
-            "plate": "HJK-7F42",
+            "plate": "DEM-0004",
             "nickname": "Fiorino 04",
             "model": "Fiat Fiorino Endurance 2022",
             "driver": "Sem motorista",
@@ -272,9 +336,9 @@ def fleet():
     ]
 
     maintenance = [
-        {"vehicle": "RTY-8A13", "type": "Troca de óleo", "date": "20/09/2026", "value": "R$ 349,90", "urgency": "Alta"},
-        {"vehicle": "GHT-2D09", "type": "Revisão preventiva", "date": "26/09/2026", "value": "R$ 680,00", "urgency": "Média"},
-        {"vehicle": "HJK-7F42", "type": "Alinhamento", "date": "02/10/2026", "value": "R$ 180,00", "urgency": "Normal"},
+        {"vehicle": "DEM-0002", "type": "Troca de óleo", "date": "20/09/2026", "value": "R$ 349,90", "urgency": "Alta"},
+        {"vehicle": "DEM-0003", "type": "Revisão preventiva", "date": "26/09/2026", "value": "R$ 680,00", "urgency": "Média"},
+        {"vehicle": "DEM-0004", "type": "Alinhamento", "date": "02/10/2026", "value": "R$ 180,00", "urgency": "Normal"},
     ]
 
     return render_template(
@@ -411,10 +475,10 @@ def fleet_reports():
         {"month": "Set", "price": "6,19", "height": 80},
     ]
     vehicles = [
-        {"vehicle": "Strada 01", "plate": "QWE-4J21", "driver": "Carlos Mendes", "distance": "1.486 km", "fuel": "11,6 km/L", "cost": "R$ 3.248,20", "maintenance": "Em dia", "status": "good"},
-        {"vehicle": "Saveiro 02", "plate": "RTY-8A13", "driver": "Ana Paula", "distance": "1.279 km", "fuel": "10,9 km/L", "cost": "R$ 3.510,40", "maintenance": "Vence em 220 km", "status": "warning"},
-        {"vehicle": "Oroch 03", "plate": "GHT-2D09", "driver": "Marcos Silva", "distance": "1.164 km", "fuel": "9,8 km/L", "cost": "R$ 3.126,80", "maintenance": "Agendada", "status": "scheduled"},
-        {"vehicle": "Fiorino 04", "plate": "HJK-7F42", "driver": "Sem motorista", "distance": "897 km", "fuel": "10,5 km/L", "cost": "R$ 2.231,30", "maintenance": "Em dia", "status": "good"},
+        {"vehicle": "Strada 01", "plate": "DEM-0001", "driver": "Técnico Alfa", "distance": "1.486 km", "fuel": "11,6 km/L", "cost": "R$ 3.248,20", "maintenance": "Em dia", "status": "good"},
+        {"vehicle": "Saveiro 02", "plate": "DEM-0002", "driver": "Técnica Beta", "distance": "1.279 km", "fuel": "10,9 km/L", "cost": "R$ 3.510,40", "maintenance": "Vence em 220 km", "status": "warning"},
+        {"vehicle": "Oroch 03", "plate": "DEM-0003", "driver": "Técnico Gama", "distance": "1.164 km", "fuel": "9,8 km/L", "cost": "R$ 3.126,80", "maintenance": "Agendada", "status": "scheduled"},
+        {"vehicle": "Fiorino 04", "plate": "DEM-0004", "driver": "Sem motorista", "distance": "897 km", "fuel": "10,5 km/L", "cost": "R$ 2.231,30", "maintenance": "Em dia", "status": "good"},
     ]
     return render_template(
         "reports_fleet.html",
@@ -438,10 +502,10 @@ def route_reports():
         {"label": "Tempo médio em trânsito", "value": "2h17", "detail": "−12 min", "trend": "down", "tone": "yellow"},
     ]
     collaborators = [
-        {"name": "Carlos Mendes", "initials": "CM", "vehicle": "QWE-4J21", "distance": "1.486 km", "completed": 168, "completion": 96, "transit": "2h04", "service": "1h18", "lunch": "1h08", "deviations": 1, "tone": "red"},
-        {"name": "Ana Paula", "initials": "AP", "vehicle": "RTY-8A13", "distance": "1.279 km", "completed": 154, "completion": 92, "transit": "2h12", "service": "1h26", "lunch": "1h17", "deviations": 3, "tone": "blue"},
-        {"name": "Marcos Silva", "initials": "MS", "vehicle": "GHT-2D09", "distance": "1.164 km", "completed": 139, "completion": 86, "transit": "2h35", "service": "1h31", "lunch": "2h18", "deviations": 5, "tone": "yellow"},
-        {"name": "Rafael Lima", "initials": "RL", "vehicle": "HJK-7F42", "distance": "897 km", "completed": 125, "completion": 89, "transit": "2h21", "service": "1h22", "lunch": "1h12", "deviations": 0, "tone": "purple"},
+        {"name": "Técnico Alfa", "initials": "CM", "vehicle": "DEM-0001", "distance": "1.486 km", "completed": 168, "completion": 96, "transit": "2h04", "service": "1h18", "lunch": "1h08", "deviations": 1, "tone": "red"},
+        {"name": "Técnica Beta", "initials": "AP", "vehicle": "DEM-0002", "distance": "1.279 km", "completed": 154, "completion": 92, "transit": "2h12", "service": "1h26", "lunch": "1h17", "deviations": 3, "tone": "blue"},
+        {"name": "Técnico Gama", "initials": "MS", "vehicle": "DEM-0003", "distance": "1.164 km", "completed": 139, "completion": 86, "transit": "2h35", "service": "1h31", "lunch": "2h18", "deviations": 5, "tone": "yellow"},
+        {"name": "Técnico Delta", "initials": "RL", "vehicle": "DEM-0004", "distance": "897 km", "completed": 125, "completion": 89, "transit": "2h21", "service": "1h22", "lunch": "1h12", "deviations": 0, "tone": "purple"},
     ]
     daily_times = [
         {"day": "Seg", "minutes": 151, "height": 74},

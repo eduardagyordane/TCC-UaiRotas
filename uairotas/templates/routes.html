@@ -30,7 +30,13 @@
         <div><h2>Mapa das equipes</h2><p>Use o mouse, toque ou controles para movimentar e ampliar</p></div>
         <div class="map-summary"><span><i class="route-color route-color--red"></i>3 em campo</span><span><i class="interest-symbol">◆</i>4 locais de interesse</span></div>
       </header>
-      <div class="routes-map" data-interactive-map{% if selected_collaborator != 'todos' %} data-focused-route="{{ selected_collaborator }}"{% endif %} tabindex="0" aria-label="Mapa interativo com as rotas dos colaboradores">
+      <div class="routes-map mapbox-map-shell" aria-label="Mapa Mapbox com as rotas dos colaboradores">
+        <div id="routes-mapbox-map" class="mapbox-map-canvas" data-mapbox-map data-map-source="routes-map-data" data-selected-route="{{ selected_collaborator }}"></div>
+        <div class="mapbox-map-message" data-mapbox-map-message hidden></div>
+        <script id="routes-map-data" type="application/json">{{ map_data | tojson }}</script>
+        <div class="mapbox-legend mapbox-legend--routes" aria-label="Legenda das rotas">{% for collaborator in collaborators %}<span><i class="mapbox-legend__line" style="--legend-color: {{ collaborator.color }}"></i>{{ collaborator.name.split()[0] }}</span>{% endfor %}<span><i class="mapbox-legend__place">◆</i>Interesse</span></div>
+      </div>
+      <div hidden aria-hidden="true">
         <div class="routes-map__stage" data-map-stage>
           <svg class="routes-map__roads" viewBox="0 0 1200 680" preserveAspectRatio="none" aria-hidden="true">
             <path class="city-block" d="M60 55h230v120H60zM355 35h235v150H355zM670 50h205v115H670zM940 25h205v160H940zM30 245h210v150H30zM305 250h250v135H305zM635 230h235v180H635zM945 250h225v135H945zM55 465h260v155H55zM390 455h210v165H390zM680 475h190v140H680zM940 445h230v175H940z"/>
@@ -44,9 +50,9 @@
 
           <span class="map-area map-area--one">Centro</span><span class="map-area map-area--two">Caiçaras</span><span class="map-area map-area--three">Lagoa Grande</span><span class="map-area map-area--four">Caramuru</span>
 
-          <button class="route-vehicle route-vehicle--carlos" type="button" aria-label="Carlos Mendes, em atendimento"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Carlos Mendes</strong><small>Em atendimento</small></span></button>
-          <button class="route-vehicle route-vehicle--ana" type="button" aria-label="Ana Paula, a caminho"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Ana Paula</strong><small>A caminho</small></span></button>
-          <button class="route-vehicle route-vehicle--marcos is-alert" type="button" aria-label="Marcos Silva, almoço acima de duas horas"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Marcos Silva</strong><small>Parado há 2h18</small></span></button>
+          <button class="route-vehicle route-vehicle--carlos" type="button" aria-label="Técnico Alfa, em atendimento"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Técnico Alfa</strong><small>Em atendimento</small></span></button>
+          <button class="route-vehicle route-vehicle--ana" type="button" aria-label="Técnica Beta, a caminho"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Técnica Beta</strong><small>A caminho</small></span></button>
+          <button class="route-vehicle route-vehicle--marcos is-alert" type="button" aria-label="Técnico Gama, almoço acima de duas horas"><span class="vehicle-icon">◆</span><span class="vehicle-label"><strong>Técnico Gama</strong><small>Parado há 2h18</small></span></button>
 
           <span class="service-pin service-pin--one"><b>1</b><small>OS 10482</small></span><span class="service-pin service-pin--two"><b>2</b><small>OS 10491</small></span><span class="service-pin service-pin--three"><b>1</b><small>OS 10496</small></span><span class="service-pin service-pin--four"><b>2</b><small>OS 10503</small></span><span class="service-pin service-pin--five is-late"><b>3</b><small>OS 10511</small></span>
 
@@ -68,8 +74,8 @@
     </article>
 
     <aside class="routes-sidebar">
-      <section class="route-alert-card" role="alert">
-        <span class="route-alert-card__icon">!</span><div><strong>Almoço acima de 2 horas</strong><p>Marcos Silva está parado no local “Restaurante Central” há <b>2h18</b>.</p><a href="#marcos-route">Ver rota do colaborador →</a></div>
+      <section class="route-alert-card" role="alert" data-audible-alert data-alert-id="routes-lunch-over-2h">
+        <span class="route-alert-card__icon">!</span><div><strong>Almoço acima de 2 horas</strong><p>Técnico Gama está parado no local “Local demonstrativo de almoço” há <b>2h18</b>.</p><a href="#marcos-route">Ver rota do colaborador →</a></div>
       </section>
 
       <section class="panel route-list-panel">

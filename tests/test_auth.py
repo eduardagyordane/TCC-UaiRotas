@@ -16,7 +16,7 @@ def test_private_home_redirects_to_login(client):
 def test_valid_login_redirects_to_home(client):
     response = client.post(
         "/login",
-        data={"email": "ADMIN@UAIROTAS.COM", "password": "SenhaSegura123!"},
+        data={"email": "ADMIN@EXAMPLE.INVALID", "password": "senha-de-teste-sem-segredo"},
         follow_redirects=True,
     )
 
@@ -29,7 +29,7 @@ def test_valid_login_redirects_to_home(client):
 def test_invalid_login_displays_generic_error(client):
     response = client.post(
         "/login",
-        data={"email": "admin@uairotas.com", "password": "senha-incorreta"},
+        data={"email": "admin@example.invalid", "password": "senha-incorreta"},
         follow_redirects=True,
     )
 
@@ -40,7 +40,7 @@ def test_invalid_login_displays_generic_error(client):
 def test_authenticated_user_cannot_reopen_login(client):
     client.post(
         "/login",
-        data={"email": "admin@uairotas.com", "password": "SenhaSegura123!"},
+        data={"email": "admin@example.invalid", "password": "senha-de-teste-sem-segredo"},
     )
 
     response = client.get("/login", follow_redirects=False)
@@ -51,7 +51,7 @@ def test_authenticated_user_cannot_reopen_login(client):
 def test_logout_ends_session(client):
     client.post(
         "/login",
-        data={"email": "admin@uairotas.com", "password": "SenhaSegura123!"},
+        data={"email": "admin@example.invalid", "password": "senha-de-teste-sem-segredo"},
     )
 
     response = client.post("/logout", follow_redirects=True)
@@ -65,7 +65,7 @@ def test_logout_ends_session(client):
 def test_external_next_url_is_rejected(client):
     response = client.post(
         "/login?next=https://example.com/phishing",
-        data={"email": "admin@uairotas.com", "password": "SenhaSegura123!"},
+        data={"email": "admin@example.invalid", "password": "senha-de-teste-sem-segredo"},
         follow_redirects=False,
     )
 
