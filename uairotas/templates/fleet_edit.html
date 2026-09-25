@@ -1,0 +1,18 @@
+{% extends "page.html" %}{% from "_ui.html" import errors_summary with context %}{% set active_page='fleet' %}{% block title %}Editar cadastro | UaiRotas{% endblock %}{% block page_content %}<a href="{{ url_for('main.fleet') }}">← Voltar à frota</a>
+<div class="page-heading">
+<div>
+<h1>Editar cadastro</h1>
+<p>{{ kinds[kind][0] }} · registro {{ record.id }}</p>
+</div>
+</div>
+<section class="card">{{ errors_summary(e) }}<form method="post" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% if kind not in ('veiculo','motorista') and record.odometer is not none %}<p class="source-note">A data, o veículo e a quilometragem de uma leitura histórica devem ser preservados. Registre uma nova leitura para atualizar o odômetro.</p>{% endif %}{% include "_fleet_fields.html" %}<div class="form-actions">
+<a class="button" href="{{ url_for('main.fleet') }}">Cancelar</a>
+<button class="button primary" type="submit">Salvar alterações</button>
+</div>
+</form>
+</section>
+<section class="card">
+<h2>Histórico de alterações</h2>
+<ul class="activity-list">{% for entry, actor in history %}<li>{{ entry.created_at.strftime('%d/%m/%Y %H:%M') }} UTC · {{ actor or 'Sistema' }} · {{ {'create':'Cadastro', 'update':'Atualização', 'complete':'Conclusão'}.get(entry.action, entry.action) }}</li>{% else %}<li>Sem alterações registradas.</li>{% endfor %}</ul>
+</section>{% endblock %}

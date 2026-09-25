@@ -1,330 +1,149 @@
-const passwordToggle = document.querySelector("[data-password-toggle]");
-
-if (passwordToggle) {
-  passwordToggle.addEventListener("click", () => {
-    const passwordInput = document.querySelector("#password");
-    const shouldShow = passwordInput.type === "password";
-
-    passwordInput.type = shouldShow ? "text" : "password";
-    passwordToggle.setAttribute("aria-pressed", String(shouldShow));
-    passwordToggle.setAttribute("aria-label", shouldShow ? "Ocultar senha" : "Mostrar senha");
+(() => {
+  "use strict";
+  const $ = selector => document.querySelector(selector);
+  const $$ = selector => [...document.querySelectorAll(selector)];
+  const storage = UaiRotas.safeStorage(() => window.localStorage);
+  const sessionStore = UaiRotas.safeStorage(() => window.sessionStorage);
+  const themeButton = $("[data-theme-toggle]");
+  function updateTheme() {
+    const dark = document.documentElement.dataset.theme === "dark";
+    themeButton?.setAttribute("aria-pressed", String(dark));
+    themeButton?.setAttribute("aria-label", dark ? "Ativar modo claro" : "Ativar modo escuro");
+  }
+  themeButton?.addEventListener("click", () => {
+    document.documentElement.dataset.theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    storage.set("uairotas-theme", document.documentElement.dataset.theme);
+    updateTheme(); window.dispatchEvent(new CustomEvent("uairotas:theme"));
   });
-}
-
-const appPage = document.querySelector(".app-page");
-const themeToggle = document.querySelector("[data-theme-toggle]");
-
-if (appPage && themeToggle) {
-  const savedTheme = localStorage.getItem("uairotas-theme");
-  const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const initialTheme = savedTheme || (systemPrefersDark ? "dark" : "light");
-
-  const applyTheme = (theme) => {
-    const isDark = theme === "dark";
-    appPage.dataset.theme = theme;
-    themeToggle.setAttribute("aria-pressed", String(isDark));
-    themeToggle.setAttribute("aria-label", isDark ? "Ativar modo claro" : "Ativar modo escuro");
-  };
-
-  applyTheme(initialTheme);
-
-  themeToggle.addEventListener("click", () => {
-    const nextTheme = appPage.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem("uairotas-theme", nextTheme);
-    applyTheme(nextTheme);
+  updateTheme();
+  $("[data-password-toggle]")?.addEventListener("click", event => {
+    const input = $("#password"), button = event.currentTarget, show = input.type === "password";
+    input.type = show ? "text" : "password";
+    button.setAttribute("aria-label", show ? "Ocultar senha" : "Mostrar senha");
+    button.setAttribute("aria-pressed", String(show));
   });
-}
-
-const navToggle = document.querySelector("[data-nav-toggle]");
-const mainNav = document.querySelector("[data-main-nav]");
-
-if (navToggle && mainNav) {
-  navToggle.addEventListener("click", () => {
-    const isOpen = mainNav.classList.toggle("is-open");
-    navToggle.setAttribute("aria-expanded", String(isOpen));
-    navToggle.setAttribute("aria-label", isOpen ? "Fechar menu" : "Abrir menu");
+  const navButton = $("[data-nav-toggle]"), nav = $("[data-main-nav]");
+  const closeNav = () => { nav?.classList.remove("is-open"); navButton?.setAttribute("aria-expanded", "false"); };
+  navButton?.addEventListener("click", () => {
+    const opened = nav.classList.toggle("is-open");
+    navButton.setAttribute("aria-expanded", String(opened));
   });
-
-  mainNav.addEventListener("click", () => {
-    mainNav.classList.remove("is-open");
-    navToggle.setAttribute("aria-expanded", "false");
-    navToggle.setAttribute("aria-label", "Abrir menu");
+  document.addEventListener("click", event => {
+    if (!event.target.closest(".app-header")) closeNav();
+    for (const menu of $$(".profile-menu[open], .action-menu[open]"))
+      if (!menu.contains(event.target)) menu.open = false;
   });
-}
-
-const interactiveMap = document.querySelector("[data-interactive-map]");
-
-if (interactiveMap) {
-  const mapStage = interactiveMap.querySelector("[data-map-stage]");
-  const mapControls = interactiveMap.querySelectorAll("[data-map-action]");
-  const routeButtons = document.querySelectorAll("[data-focus-route]");
-  const mapState = { scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0 };
-
-  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-  const renderMap = () => {
-    mapStage.style.transform = `translate(${mapState.x}px, ${mapState.y}px) scale(${mapState.scale})`;
-  };
-
-  const changeZoom = (step) => {
-    mapState.scale = clamp(mapState.scale + step, 0.8, 2.4);
-    renderMap();
-  };
-
-  const resetMap = () => {
-    mapState.scale = 1;
-    mapState.x = 0;
-    mapState.y = 0;
-    interactiveMap.removeAttribute("data-focused-route");
-    renderMap();
-  };
-
-  mapControls.forEach((control) => {
-    control.addEventListener("click", async () => {
-      const action = control.dataset.mapAction;
-      if (action === "zoom-in") changeZoom(0.2);
-      if (action === "zoom-out") changeZoom(-0.2);
-      if (action === "reset") resetMap();
-      if (action === "fullscreen") {
-        if (document.fullscreenElement) await document.exitFullscreen();
-        else if (interactiveMap.requestFullscreen) await interactiveMap.requestFullscreen();
-      }
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    if (nav?.classList.contains("is-open")) { closeNav(); navButton.focus(); }
+    for (const menu of $$(".profile-menu[open], .action-menu[open]")) { menu.open = false; menu.querySelector("summary").focus(); }
+  });
+  function openDialog(dialog, opener = document.activeElement) {
+    if (!dialog) return;
+    dialog._opener = opener;
+    for (const menu of $$(".action-menu[open], .profile-menu[open]")) menu.open = false;
+    if (!dialog.open) dialog.showModal();
+    (dialog.querySelector("[data-form-errors]") || dialog.querySelector("[aria-invalid='true']") ||
+      dialog.querySelector("input:not([type=hidden]),select") || dialog.querySelector("button"))?.focus();
+  }
+  $$("[data-dialog-open]").forEach(button => button.addEventListener("click", () => openDialog(document.getElementById(button.dataset.dialogOpen), button)));
+  $$("[data-dialog-close]").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
+  $$("dialog").forEach(dialog => {
+    dialog.addEventListener("close", () => dialog._opener?.focus());
+    dialog.addEventListener("click", event => {
+      const r = dialog.getBoundingClientRect();
+      if (event.target === dialog && (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom)) dialog.close();
     });
   });
-
-  interactiveMap.addEventListener("wheel", (event) => {
-    event.preventDefault();
-    changeZoom(event.deltaY < 0 ? 0.12 : -0.12);
-  }, { passive: false });
-
-  interactiveMap.addEventListener("pointerdown", (event) => {
-    if (event.target.closest("button")) return;
-    mapState.dragging = true;
-    mapState.startX = event.clientX - mapState.x;
-    mapState.startY = event.clientY - mapState.y;
-    interactiveMap.classList.add("is-dragging");
-    interactiveMap.setPointerCapture(event.pointerId);
-  });
-
-  interactiveMap.addEventListener("pointermove", (event) => {
-    if (!mapState.dragging) return;
-    mapState.x = clamp(event.clientX - mapState.startX, -420, 420);
-    mapState.y = clamp(event.clientY - mapState.startY, -280, 280);
-    renderMap();
-  });
-
-  const stopDragging = (event) => {
-    if (!mapState.dragging) return;
-    mapState.dragging = false;
-    interactiveMap.classList.remove("is-dragging");
-    if (interactiveMap.hasPointerCapture(event.pointerId)) interactiveMap.releasePointerCapture(event.pointerId);
-  };
-
-  interactiveMap.addEventListener("pointerup", stopDragging);
-  interactiveMap.addEventListener("pointercancel", stopDragging);
-
-  interactiveMap.addEventListener("keydown", (event) => {
-    const movement = 24;
-    if (["+", "="].includes(event.key)) changeZoom(0.2);
-    else if (event.key === "-") changeZoom(-0.2);
-    else if (event.key === "ArrowLeft") mapState.x += movement;
-    else if (event.key === "ArrowRight") mapState.x -= movement;
-    else if (event.key === "ArrowUp") mapState.y += movement;
-    else if (event.key === "ArrowDown") mapState.y -= movement;
-    else if (event.key === "0") resetMap();
-    else return;
-    event.preventDefault();
-    renderMap();
-  });
-
-  routeButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const route = button.dataset.focusRoute;
-      const alreadyFocused = interactiveMap.dataset.focusedRoute === route;
-      if (alreadyFocused) interactiveMap.removeAttribute("data-focused-route");
-      else interactiveMap.dataset.focusedRoute = route;
-      interactiveMap.scrollIntoView({ behavior: "smooth", block: "center" });
+  $$("[data-auto-open]").forEach(dialog => openDialog(dialog));
+  $$("input[type=file][name=foto]").forEach(input => {
+    const preview = document.createElement("img");
+    preview.alt = "Prévia da foto selecionada"; preview.className = "photo-preview"; preview.hidden = true;
+    input.after(preview);
+    let objectUrl;
+    input.addEventListener("change", () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      preview.hidden = true; input.setCustomValidity("");
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 512 * 1024 || !["image/png","image/jpeg"].includes(file.type)) {
+        input.setCustomValidity("Escolha uma imagem PNG ou JPEG de até 512 KB."); input.reportValidity(); return;
+      }
+      objectUrl = URL.createObjectURL(file); preview.src = objectUrl; preview.hidden = false;
     });
   });
-}
-
-const fleetDialogOpeners = document.querySelectorAll("[data-open-fleet-dialog]");
-const fleetDialogClosers = document.querySelectorAll("[data-close-fleet-dialog]");
-
-fleetDialogOpeners.forEach((opener) => {
-  opener.addEventListener("click", () => {
-    const dialog = document.getElementById(opener.dataset.openFleetDialog);
-    if (!dialog) return;
-
-    const createMenu = opener.closest(".fleet-create-menu");
-    if (createMenu) createMenu.removeAttribute("open");
-    dialog.showModal();
-    const firstField = dialog.querySelector("input:not([type='hidden']), select, textarea");
-    if (firstField) firstField.focus();
-  });
-});
-
-fleetDialogClosers.forEach((closer) => {
-  closer.addEventListener("click", () => closer.closest("dialog")?.close());
-});
-
-document.querySelectorAll(".fleet-dialog").forEach((dialog) => {
-  dialog.addEventListener("click", (event) => {
-    const bounds = dialog.getBoundingClientRect();
-    const clickedBackdrop = event.clientX < bounds.left || event.clientX > bounds.right
-      || event.clientY < bounds.top || event.clientY > bounds.bottom;
-    if (clickedBackdrop) dialog.close();
-  });
-});
-
-const userDialogOpeners = document.querySelectorAll("[data-open-user-dialog]");
-const userDialogClosers = document.querySelectorAll("[data-close-user-dialog]");
-
-userDialogOpeners.forEach((opener) => {
-  opener.addEventListener("click", () => {
-    const dialog = document.getElementById(opener.dataset.openUserDialog);
-    if (!dialog) return;
-    dialog.showModal();
-    const firstField = dialog.querySelector("input:not([type='hidden']), select, textarea");
-    if (firstField) firstField.focus();
-  });
-});
-
-userDialogClosers.forEach((closer) => {
-  closer.addEventListener("click", () => closer.closest("dialog")?.close());
-});
-
-document.querySelectorAll(".user-dialog").forEach((dialog) => {
-  dialog.addEventListener("click", (event) => {
-    const bounds = dialog.getBoundingClientRect();
-    const clickedBackdrop = event.clientX < bounds.left || event.clientX > bounds.right
-      || event.clientY < bounds.top || event.clientY > bounds.bottom;
-    if (clickedBackdrop) dialog.close();
-  });
-});
-
-const systemAlertAudio = document.querySelector("[data-system-alert-audio]");
-const alertSoundToggle = document.querySelector("[data-alert-sound-toggle]");
-
-if (systemAlertAudio && alertSoundToggle) {
-  const preferenceKey = "uairotas-alert-sound";
-  const heardKey = "uairotas-heard-alerts";
-  const soundBadge = alertSoundToggle.querySelector("[data-alert-sound-badge]");
-  const soundStatus = document.querySelector("[data-alert-sound-status]");
-  let soundEnabled = localStorage.getItem(preferenceKey) !== "off";
-  let isPlaying = false;
-
-  const readHeardAlerts = () => {
-    try {
-      return new Set(JSON.parse(sessionStorage.getItem(heardKey) || "[]"));
-    } catch (error) {
-      return new Set();
+  const userForm = $("[data-user-form]");
+  function resetUser() {
+    userForm.reset(); userForm.querySelector("[data-form-errors]")?.remove();
+    userForm.querySelectorAll(".field-error").forEach(e => e.remove());
+    userForm.querySelectorAll("[aria-invalid]").forEach(e => { e.removeAttribute("aria-invalid"); e.removeAttribute("aria-describedby"); });
+    for (const input of userForm.elements) if (input.name && input.name !== "csrf_token") {
+      if (input.type === "checkbox") input.checked = true; else input.value = "";
     }
-  };
-
-  const heardAlerts = readHeardAlerts();
-  const pendingAlerts = new Set(
-    [...document.querySelectorAll("[data-audible-alert]")]
-      .map((alert) => alert.dataset.alertId)
-      .filter((alertId) => alertId && !heardAlerts.has(alertId)),
-  );
-
-  const saveHeardAlerts = () => {
+    userForm.elements.role.value = "supervisor";
+  }
+  $("[data-user-create]")?.addEventListener("click", event => {
+    resetUser(); userForm.action = userForm.dataset.createAction; userForm.elements.password.required = true;
+    $("#user-dialog-title").textContent = "Novo usuário"; openDialog($("#user-dialog"), event.currentTarget);
+  });
+  $$("[data-user-edit]").forEach(button => button.addEventListener("click", async () => {
+    button.disabled = true; const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+    const message = $("[data-user-message]"); message.textContent = "Carregando cadastro…";
     try {
-      sessionStorage.setItem(heardKey, JSON.stringify([...heardAlerts]));
-    } catch (error) {
-      // O alerta continua funcional mesmo quando o armazenamento está indisponível.
-    }
-  };
-
-  const updateSoundControl = () => {
-    alertSoundToggle.classList.toggle("is-muted", !soundEnabled);
-    alertSoundToggle.classList.toggle("has-pending-alerts", pendingAlerts.size > 0);
-    alertSoundToggle.setAttribute("aria-pressed", String(soundEnabled));
-    alertSoundToggle.setAttribute(
-      "aria-label",
-      soundEnabled ? "Desativar alertas sonoros" : "Ativar alertas sonoros",
-    );
-    alertSoundToggle.title = soundEnabled ? "Alertas sonoros ativados" : "Alertas sonoros desativados";
-    if (soundBadge) {
-      soundBadge.textContent = String(pendingAlerts.size);
-      soundBadge.hidden = pendingAlerts.size === 0;
-    }
-  };
-
-  const markPendingAsHeard = () => {
-    pendingAlerts.forEach((alertId) => heardAlerts.add(alertId));
-    pendingAlerts.clear();
-    saveHeardAlerts();
-    updateSoundControl();
-  };
-
-  const playPendingAlert = async () => {
-    if (!soundEnabled || pendingAlerts.size === 0 || isPlaying) return false;
-    systemAlertAudio.currentTime = 0;
-    systemAlertAudio.volume = 0.72;
-    try {
-      isPlaying = true;
-      await systemAlertAudio.play();
-      markPendingAsHeard();
-      alertSoundToggle.classList.remove("needs-interaction");
-      if (soundStatus) soundStatus.textContent = "Alerta sonoro reproduzido.";
-      return true;
-    } catch (error) {
-      isPlaying = false;
-      alertSoundToggle.classList.add("needs-interaction");
-      if (soundStatus) {
-        soundStatus.textContent = "Existem alertas novos. Interaja com a página ou use o botão de som para ouvi-los.";
+      const response = await fetch(button.dataset.userEdit, { signal:controller.signal, headers:{Accept:"application/json"} });
+      if (!response.ok) throw new Error("http");
+      const data = await response.json(); resetUser();
+      for (const [key, value] of Object.entries(data)) {
+        const control = userForm.elements.namedItem(key);
+        if (control) { if (control.type === "checkbox") control.checked = !!value; else control.value = value; }
       }
-      return false;
+      const action = new URL(data.action, window.location.origin);
+      action.search = new URL(userForm.dataset.createAction, window.location.origin).search;
+      userForm.action = action.pathname + action.search; userForm.elements.password.required = false;
+      $("#user-dialog-title").textContent = "Editar usuário"; message.textContent = ""; openDialog($("#user-dialog"), button);
+    } catch (_) { message.textContent = "Não foi possível carregar o cadastro. Atualize a página e tente novamente."; }
+    finally { clearTimeout(timeout); button.disabled = false; }
+  }));
+  $$("form[method='post']").forEach(form => form.addEventListener("submit", () => {
+    form.setAttribute("aria-busy", "true");
+    form.querySelectorAll("button[type=submit]").forEach(button => { button.disabled = true; });
+  }));
+  window.addEventListener("pageshow", () => {
+    $$("form[aria-busy]").forEach(form => { form.removeAttribute("aria-busy"); form.querySelectorAll("button[type=submit]").forEach(b => { b.disabled = false; }); });
+  });
+  let printDetails = [];
+  window.addEventListener("beforeprint", () => { printDetails = $$("details.data-alternative:not([open])"); printDetails.forEach(d => { d.open = true; }); });
+  window.addEventListener("afterprint", () => printDetails.forEach(d => { d.open = false; }));
+  $("[data-print]")?.addEventListener("click", () => window.print());
+  const audio = $("[data-system-alert-audio]"), soundButton = $("[data-alert-sound-toggle]");
+  if (!audio || !soundButton) return;
+  const player = UaiRotas.alertPlayer({
+    audio, preferences:storage, heardStorage:sessionStore, userId:document.body.dataset.userId,
+    update(state) {
+      soundButton.classList.toggle("is-muted", !state.enabled);
+      soundButton.classList.toggle("needs-interaction", state.blocked && state.pending > 0);
+      soundButton.classList.toggle("has-audio-error", state.failed);
+      const label = state.enabled ? ((state.blocked || state.failed) ? "Ativar reprodução dos alertas" : "Desativar alertas sonoros") : "Ativar alertas sonoros";
+      soundButton.setAttribute("aria-label", label); soundButton.setAttribute("title", label);
+      soundButton.setAttribute("aria-pressed", String(state.enabled));
+      const badge = $("[data-alert-sound-badge]"); badge.hidden = !state.pending; badge.textContent = String(state.pending);
+      $("[data-sound-volume]").value = Math.round(state.volume * 100);
+      $$("[data-sound-category]").forEach(input => { input.checked = state.categories[input.dataset.soundCategory] !== false; });
+      const text = state.failed ? "Falha ao reproduzir. Tente novamente pelo sino." : state.blocked ? "O navegador bloqueou o áudio. Clique no sino para liberar." : !state.enabled ? "Som desativado. Os alertas continuam visíveis." : "Som ativado · volume " + Math.round(state.volume * 100) + "%";
+      $("[data-alert-sound-status]").textContent = text; $("[data-sound-feedback]").textContent = text;
     }
+  });
+  soundButton.addEventListener("click", () => player.toggle());
+  $("[data-sound-volume]").addEventListener("input", event => player.setVolume(event.target.value / 100));
+  $$("[data-sound-category]").forEach(input => input.addEventListener("change", () => player.setCategory(input.dataset.soundCategory, input.checked)));
+  $("[data-sound-test]").addEventListener("click", () => player.play(true));
+  player.receive($$("[data-audible-alert]").map(element => ({ id:element.dataset.alertId, category:element.dataset.alertCategory })));
+  setTimeout(() => player.play(), 300);
+  const unlock = event => {
+    if (event.target.closest("[data-alert-sound-toggle],#sound-settings")) return;
+    if (player.state().blocked) player.play();
   };
-
-  systemAlertAudio.addEventListener("ended", () => {
-    isPlaying = false;
-    playPendingAlert();
-  });
-  systemAlertAudio.addEventListener("error", () => {
-    isPlaying = false;
-    alertSoundToggle.classList.add("has-audio-error");
-    if (soundStatus) soundStatus.textContent = "Não foi possível carregar o som dos alertas.";
-  });
-
-  const unlockAudio = async (event) => {
-    if (event.target.closest?.("[data-alert-sound-toggle]")) return;
-    const played = await playPendingAlert();
-    if (played) {
-      document.removeEventListener("pointerdown", unlockAudio, true);
-      document.removeEventListener("keydown", unlockAudio, true);
-    }
-  };
-
-  document.addEventListener("pointerdown", unlockAudio, true);
-  document.addEventListener("keydown", unlockAudio, true);
-
-  alertSoundToggle.addEventListener("click", async () => {
-    soundEnabled = !soundEnabled;
-    localStorage.setItem(preferenceKey, soundEnabled ? "on" : "off");
-    if (!soundEnabled) {
-      systemAlertAudio.pause();
-      systemAlertAudio.currentTime = 0;
-      isPlaying = false;
-      if (soundStatus) soundStatus.textContent = "Alertas sonoros desativados.";
-    } else {
-      if (soundStatus) soundStatus.textContent = "Alertas sonoros ativados.";
-    }
-    updateSoundControl();
-    if (soundEnabled) await playPendingAlert();
-  });
-
-  window.addEventListener("uairotas:alert", (event) => {
-    const alertId = event.detail?.id || `realtime-${Date.now()}`;
-    if (heardAlerts.has(alertId)) return;
-    pendingAlerts.add(alertId);
-    updateSoundControl();
-    playPendingAlert();
-  });
-
-  updateSoundControl();
-  window.setTimeout(playPendingAlert, 250);
-}
+  document.addEventListener("pointerdown", unlock);
+  document.addEventListener("keydown", unlock);
+  window.addEventListener("uairotas:alert", event => { if (event.detail?.id) { player.receive([event.detail]); player.play(); } });
+})();

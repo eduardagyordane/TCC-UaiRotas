@@ -4,7 +4,7 @@
 {% block body_class %}login-page{% endblock %}
 
 {% block content %}
-<main class="login-shell">
+<main id="main-content" class="login-shell">
   <section class="login-brand" aria-labelledby="brand-title">
     <a class="brand" href="{{ url_for('auth.login') }}" aria-label="UaiRotas">
       <span class="brand-mark" aria-hidden="true">
@@ -52,14 +52,15 @@
         {% endif %}
       {% endwith %}
 
-      <form method="post" class="login-form" novalidate>
+      {% if throttled %}<p class="flash flash--error" role="alert">Muitas tentativas. Aguarde 15 minutos antes de tentar novamente.</p>{% endif %}
+      <form method="post" class="login-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <label class="field">
           <span>E-mail</span>
           <span class="field-control">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg>
-            <input type="email" name="email" autocomplete="username" placeholder="seuemail@empresa.com" required autofocus>
+            <input type="email" name="email" autocomplete="username" placeholder="seuemail@empresa.com" maxlength="255" value="{{ email|default('') }}" required autofocus>
           </span>
         </label>
 
@@ -67,7 +68,7 @@
           <span>Senha</span>
           <span class="field-control">
             <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-            <input id="password" type="password" name="password" autocomplete="current-password" placeholder="Digite sua senha" required>
+            <input id="password" type="password" name="password" autocomplete="current-password" placeholder="Digite sua senha" maxlength="128" required>
             <button class="password-toggle" type="button" data-password-toggle aria-label="Mostrar senha" aria-pressed="false">
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
             </button>
@@ -89,4 +90,3 @@
   </section>
 </main>
 {% endblock %}
-

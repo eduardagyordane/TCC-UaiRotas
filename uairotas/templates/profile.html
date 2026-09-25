@@ -1,0 +1,23 @@
+{% extends "page.html" %}{% from "_ui.html" import field, errors_summary with context %}{% block title %}Meu perfil | UaiRotas{% endblock %}{% block page_content %}
+<div class="page-heading">
+<div>
+<p class="kicker">Sua conta</p>
+<h1>Meu perfil</h1>
+<p>Atualize seus dados e sua senha de acesso.</p>
+</div>
+</div>
+<section class="card">{{ errors_summary(errors) }}<form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="form-grid">
+{{ field('Nome', 'name', form_values, errors, maxlength=120) }}{{ field('E-mail', 'email', form_values, errors, 'email', maxlength=255) }}
+{{ field('Telefone com DDD', 'phone', form_values, errors, 'tel', false, maxlength=20) }}{{ field('Endereço', 'address', form_values, errors, required=false, maxlength=255) }}
+{{ field('CPF', 'cpf', form_values, errors, required=false, maxlength=14) }}{{ field('Data de nascimento', 'birth_date', form_values, errors, 'date', false, max=today) }}
+</div>
+<h2>Segurança</h2>
+<p class="muted">Informe a senha atual para trocar e-mail ou senha. Alterações de acesso encerram as outras sessões.</p>
+<div class="form-grid">{{ field('Senha atual', 'current_password', form_values, errors, 'password', false, maxlength=128) }}{{ field('Nova senha', 'password', form_values, errors, 'password', false, maxlength=128) }}{{ field('Confirme a nova senha', 'password_confirmation', form_values, errors, 'password', false, maxlength=128) }}</div>
+<div class="form-actions">
+<button type="submit" class="button primary">Salvar perfil</button>
+</div>
+</form>
+</section>{% endblock %}

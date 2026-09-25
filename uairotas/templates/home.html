@@ -1,123 +1,57 @@
-{% extends "base.html" %}
-
-{% block title %}Home | UaiRotas{% endblock %}
-{% block body_class %}app-page{% endblock %}
-
-{% block content %}
-{% set active_page = "home" %}
-{% include "_app_header.html" %}
-
-<main class="dashboard-shell">
-  <section class="welcome-row" aria-labelledby="dashboard-title">
-    <div>
-      <p class="dashboard-kicker">Visão geral da operação</p>
-      <h1 id="dashboard-title">Olá, {{ current_user.name.split()[0] }}!</h1>
-      <p>Acompanhe as equipes, a frota e as ordens de serviço de hoje.</p>
-    </div>
-    <div class="sync-status" title="Última sincronização concluída">
-      <span aria-hidden="true"></span>
-      <div><strong>Dados atualizados</strong><small>{{ today }} · 08:42</small></div>
-    </div>
-  </section>
-
-  <section class="metric-grid" aria-label="Indicadores da operação">
-    {% for metric in metrics %}
-      <article class="metric-card">
-        <span class="metric-icon metric-icon--{{ metric.tone }}" aria-hidden="true">
-          {% if metric.icon == "car" %}
-            <svg viewBox="0 0 24 24"><path d="m5 16 1.5-6h11l1.5 6M4 16h16v4H4z"/><circle cx="7" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M8 10 9.5 7h5L16 10"/></svg>
-          {% elif metric.icon == "users" %}
-            <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20v-2a5.5 5.5 0 0 1 11 0v2M14 14.5a4.5 4.5 0 0 1 6.5 4V20"/></svg>
-          {% elif metric.icon == "clipboard" %}
-            <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6M9 18h4"/></svg>
-          {% else %}
-            <svg viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17.5v.5"/></svg>
-          {% endif %}
-        </span>
-        <div class="metric-card__copy"><span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.detail }}</small></div>
-      </article>
-    {% endfor %}
-  </section>
-
-  <section class="dashboard-grid dashboard-grid--primary">
-    <article class="panel map-panel">
-      <header class="panel-header">
-        <div><h2>Equipes em campo</h2><p>Localização mais recente dos veículos</p></div>
-        <a href="{{ url_for('main.routes') }}">Ver rotas <span aria-hidden="true">→</span></a>
-      </header>
-      <div class="map-canvas mapbox-map-shell" aria-label="Mapa Mapbox com veículos, rotas e locais de interesse">
-        <div id="home-mapbox-map" class="mapbox-map-canvas" data-mapbox-map data-map-source="home-map-data"></div>
-        <div class="mapbox-map-message" data-mapbox-map-message hidden></div>
-        <script id="home-map-data" type="application/json">{{ map_data | tojson }}</script>
-        <div class="mapbox-legend" aria-label="Legenda do mapa"><span><i class="mapbox-legend__vehicle">🚗</i>Veículo</span><span><i class="mapbox-legend__order">1</i>Ordem</span><span><i class="mapbox-legend__place">◆</i>Interesse</span></div>
-      </div>
-      <div hidden aria-hidden="true">
-        <svg class="map-roads" viewBox="0 0 900 460" preserveAspectRatio="none" aria-hidden="true">
-          <path class="road road--wide" d="M-20 360C160 300 250 410 420 310S700 210 930 260"/>
-          <path class="road" d="M100-20c40 120 160 130 150 260s80 170 160 240"/>
-          <path class="road" d="M450-30c-20 120 70 170 30 270s60 120 190 250"/>
-          <path class="road" d="M700-20c-80 120-90 180 30 250s120 150 100 260"/>
-          <path class="road road--minor" d="M-20 120c170-30 300 50 450 20s290-80 500 10"/>
-          <path class="road road--minor" d="M-20 230c190 40 300-30 470 20s310 10 480-40"/>
-          <path class="route-path" d="M170 330c90-40 155 25 245-30s120-145 250-130"/>
-        </svg>
-        <div class="map-neighborhood map-neighborhood--one">Centro</div>
-        <div class="map-neighborhood map-neighborhood--two">Caiçaras</div>
-        <div class="map-neighborhood map-neighborhood--three">Lagoa Grande</div>
-        <button class="map-marker map-marker--one" type="button" aria-label="Técnico Alfa, em atendimento">
-          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Técnico Alfa</strong><small>Em atendimento</small></span>
-        </button>
-        <button class="map-marker map-marker--two" type="button" aria-label="Técnica Beta, a caminho">
-          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Técnica Beta</strong><small>A caminho</small></span>
-        </button>
-        <button class="map-marker map-marker--three" type="button" aria-label="Técnico Delta, disponível">
-          <span class="map-marker__pulse"></span><span class="map-marker__car">◆</span><span class="map-tooltip"><strong>Técnico Delta</strong><small>Disponível</small></span>
-        </button>
-        <span class="interest-pin interest-pin--one" title="Escritório Uai Telecom" aria-label="Local de interesse: escritório Uai Telecom">U</span>
-        <span class="interest-pin interest-pin--two" title="Almoxarifado" aria-label="Local de interesse: almoxarifado">A</span>
-        <div class="map-controls" aria-label="Controles ilustrativos do mapa">
-          <button type="button" aria-label="Ampliar mapa">+</button><button type="button" aria-label="Reduzir mapa">−</button>
-        </div>
-        <div class="map-legend"><span><i class="legend-dot legend-dot--moving"></i>Em rota</span><span><i class="legend-dot legend-dot--stopped"></i>Parado</span><span><i class="legend-dot legend-dot--interest"></i>Interesse</span></div>
-      </div>
-    </article>
-
-    <aside class="panel alert-panel">
-      <header class="panel-header"><div><h2>Alertas</h2><p>Ocorrências que exigem atenção</p></div><span class="panel-count">3</span></header>
-      <div class="alert-list">
-        {% for alert in alerts %}
-          <article class="alert-item alert-item--{{ alert.level }}" data-audible-alert data-alert-id="home-{{ alert.level }}-{{ loop.index }}">
-            <span class="alert-item__icon" aria-hidden="true">!</span>
-            <div><strong>{{ alert.title }}</strong><p>{{ alert.description }}</p><small>{{ alert.time }}</small></div>
-          </article>
-        {% endfor %}
-      </div>
-      <a class="panel-footer-link" href="#">Visualizar todos os alertas <span aria-hidden="true">→</span></a>
-    </aside>
-  </section>
-
-  <section class="dashboard-grid dashboard-grid--secondary">
-    <article class="panel orders-panel">
-      <header class="panel-header"><div><h2>Ordens de serviço de hoje</h2><p>Acompanhamento das atividades programadas</p></div><a href="#">Ver todas <span aria-hidden="true">→</span></a></header>
-      <div class="table-scroll">
-        <table class="orders-table">
-          <thead><tr><th>OS / Cliente</th><th>Serviço</th><th>Técnico</th><th>Horário</th><th>Status</th></tr></thead>
-          <tbody>
-            {% for order in service_orders %}
-              <tr><td><strong>{{ order.code }}</strong><span>{{ order.customer }}</span></td><td>{{ order.service }}</td><td>{{ order.technician }}</td><td>{{ order.time }}</td><td><span class="status-badge status-badge--{{ order.status_key }}">{{ order.status }}</span></td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </article>
-
-    <article class="panel performance-panel">
-      <header class="panel-header"><div><h2>Desempenho do dia</h2><p>Ordens por situação</p></div><button class="more-button" type="button" aria-label="Mais opções">•••</button></header>
-      <div class="performance-content">
-        <div class="donut" role="img" aria-label="70 por cento das ordens concluídas"><div><strong>70%</strong><span>concluídas</span></div></div>
-        <ul class="chart-legend"><li><span><i class="chart-dot chart-dot--done"></i>Concluídas</span><strong>19</strong></li><li><span><i class="chart-dot chart-dot--progress"></i>Em andamento</span><strong>5</strong></li><li><span><i class="chart-dot chart-dot--pending"></i>Pendentes</span><strong>3</strong></li></ul>
-      </div>
-    </article>
-  </section>
-</main>
-{% endblock %}
+{% extends "page.html" %}{% from "_ui.html" import source_note, metric, map_panel, alert_list with context %}{% set active_page = 'home' %}
+{% block title %}Home | UaiRotas{% endblock %}{% block page_content %}
+<div class="page-heading">
+<div>
+<p class="kicker">Visão da operação</p>
+<h1>Olá, {{ current_user.name.split()[0] }}.</h1>
+<p>Acompanhe as equipes e os atendimentos de hoje.</p>
+</div>
+<span class="date-chip">{{ today.strftime('%d/%m/%Y') }}</span>
+</div>{{ source_note(source) }}
+<div class="metrics">{{ metric('Veículos', vehicle_count, 'Carros cadastrados') }}{{ metric('Colaboradores', driver_count, 'Motoristas cadastrados') }}{{ metric('Quilometragem do dia', (overview.distance_m / 1000)|decimal_br + ' km') }}{{ metric('Ordens concluídas', overview.complete|string + ' / ' + overview.orders_total|string, overview.completion|string + '% dos atendimentos') }}</div>
+<div class="two-columns map-columns">{{ map_panel(map_data) }}<section class="card">
+<div class="section-heading">
+<h2>Alertas atuais</h2>
+<a href="{{ url_for('main.alerts') }}">Ver todos</a>
+</div>{{ alert_list(alerts) }}</section>
+</div>
+<section class="card">
+<div class="section-heading">
+<h2>Ordens de serviço do dia</h2>
+<a href="{{ url_for('main.routes') }}">Ver rotas</a>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>OS / Cliente</th>
+<th>Endereço</th>
+<th>Serviço</th>
+<th>Colaborador</th>
+<th>Situação</th>
+</tr>
+</thead>
+<tbody>{% for order in orders %}<tr>
+<td>
+<a href="{{ url_for('main.order_detail', order_id=order.id) }}">{{ order.code }}</a>
+<small>{{ order.customer }}</small>
+</td>
+<td>{{ order.address }}</td>
+<td>{{ order.service }}</td>
+<td>{{ order.driver.name }}</td>
+<td>
+<span class="status status--{{ order.status }}">{{ status_labels[order.status] }}</span>
+</td>
+</tr>{% else %}<tr>
+<td colspan="5">Nenhuma ordem registrada para hoje.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+</section>
+<section class="card section-heading">
+<div>
+<h2>Relatórios da operação</h2>
+<p class="muted">Consulte custos, distâncias e atendimentos por período.</p>
+</div>
+<a class="button" href="{{ url_for('main.reports') }}">Abrir relatórios</a>
+</section>{% endblock %}

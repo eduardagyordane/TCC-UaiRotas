@@ -4,18 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="UaiRotas — gestão de equipes externas e frota.">
-  <meta name="mapbox-access-token" content="{{ config.get('MAPBOX_ACCESS_TOKEN', '') }}">
+  {% if map_data is defined %}<meta name="mapbox-access-token" content="{{ config.get('MAPBOX_ACCESS_TOKEN', '') }}">{% endif %}
   <title>{% block title %}UaiRotas{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.css" rel="stylesheet">
+  {% if map_data is defined %}<link href="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.css" rel="stylesheet">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/refinements.css') }}">
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{% block body_class %}{% endblock %}" {% if current_user.is_authenticated %}data-user-id="{{ current_user.id }}"{% endif %}>
+  <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
   {% block content %}{% endblock %}
+  <script src="{{ url_for('static', filename='js/core.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  {% if map_data is defined %}
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.js" defer></script>
   <script src="{{ url_for('static', filename='js/maps.js') }}" defer></script>
+  {% endif %}
 </body>
 </html>

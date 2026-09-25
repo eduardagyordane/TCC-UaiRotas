@@ -1,174 +1,142 @@
-{% extends "base.html" %}
-
-{% block title %}Frota | UaiRotas{% endblock %}
-{% block body_class %}app-page{% endblock %}
-
-{% block content %}
-{% set active_page = "fleet" %}
-{% include "_app_header.html" %}
-
-<main class="fleet-shell">
-  <section class="fleet-heading" aria-labelledby="fleet-title">
-    <div>
-      <p class="dashboard-kicker">Gestão de veículos e custos</p>
-      <h1 id="fleet-title">Frota</h1>
-      <p>Acompanhe veículos, motoristas, manutenção e despesas em um só lugar.</p>
-    </div>
-    <details class="fleet-create-menu">
-      <summary>
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Adicionar à frota
-        <svg class="fleet-create-menu__chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></svg>
-      </summary>
-      <div class="fleet-create-menu__panel">
-        <button type="button" data-open-fleet-dialog="vehicle-dialog"><strong>Novo veículo</strong><span>Cadastre um carro e seu odômetro</span></button>
-        <button type="button" data-open-fleet-dialog="driver-dialog"><strong>Novo motorista</strong><span>Dados pessoais e documentos</span></button>
-        <button type="button" data-open-fleet-dialog="oil-dialog"><strong>Troca de óleo</strong><span>Última e próxima troca</span></button>
-        <button type="button" data-open-fleet-dialog="fuel-dialog"><strong>Abastecimento</strong><span>Litros e valor da gasolina</span></button>
-        <button type="button" data-open-fleet-dialog="fine-dialog"><strong>Multa</strong><span>Infração, motorista e veículo</span></button>
-        <button type="button" data-open-fleet-dialog="expense-dialog"><strong>Outro gasto</strong><span>Registre despesas adicionais</span></button>
-        <button type="button" data-open-fleet-dialog="maintenance-dialog"><strong>Agendar manutenção</strong><span>Data, serviço e valor previsto</span></button>
-      </div>
-    </details>
-  </section>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="fleet-flashes" aria-live="polite">
-        {% for category, message in messages %}<p class="fleet-flash fleet-flash--{{ category }}"{% if category == 'error' %} data-audible-alert data-alert-id="fleet-form-error"{% endif %}>{{ message }}</p>{% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
-
-  <section class="fleet-summary" aria-label="Resumo da frota">
-    {% for item in summary %}
-      <article class="fleet-summary-card fleet-summary-card--{{ item.tone }}">
-        <span class="fleet-summary-card__icon" aria-hidden="true">
-          {% if loop.index == 1 %}
-            <svg viewBox="0 0 24 24"><path d="m5 16 1.5-6h11l1.5 6M4 16h16v4H4zM8 10 9.5 7h5L16 10"/><circle cx="7" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/></svg>
-          {% elif loop.index == 2 %}
-            <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20v-2a5.5 5.5 0 0 1 11 0v2M14 14.5a4.5 4.5 0 0 1 6.5 4V20"/></svg>
-          {% elif loop.index == 3 %}
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 16.5 8M12 7v1M17 12h-1M7 12H6"/></svg>
-          {% elif loop.index == 4 %}
-            <svg viewBox="0 0 24 24"><path d="M8 3h8v5l2 3v10H6V11l2-3V3ZM8 8h8M9 14h6"/></svg>
-          {% else %}
-            <svg viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></svg>
-          {% endif %}
-        </span>
-        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong><small>{{ item.detail }}</small></div>
-      </article>
-    {% endfor %}
-  </section>
-
-  <section class="panel fleet-vehicles-panel">
-    <header class="panel-header">
-      <div><h2>Veículos da frota</h2><p>Odômetro, responsável e situação da troca de óleo</p></div>
-      <button class="fleet-text-button" type="button" data-open-fleet-dialog="vehicle-dialog">+ Novo veículo</button>
-    </header>
-    <div class="table-scroll">
-      <table class="fleet-table">
-        <thead><tr><th>Veículo</th><th>Motorista / técnico</th><th>Odômetro</th><th>Última troca de óleo</th><th>Próxima troca</th><th>Status</th></tr></thead>
-        <tbody>
-          {% for vehicle in vehicles %}
-            <tr{% if vehicle.status_key == 'warning' %} data-audible-alert data-alert-id="fleet-oil-warning-{{ vehicle.plate }}"{% endif %}>
-              <td><span class="fleet-car-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 16 1.5-6h11l1.5 6M4 16h16v4H4zM8 10 9.5 7h5L16 10"/></svg></span><div><strong>{{ vehicle.nickname }}</strong><small>{{ vehicle.model }} · {{ vehicle.plate }}</small></div></td>
-              <td><strong>{{ vehicle.driver }}</strong><small>{{ vehicle.technician }}</small></td>
-              <td><strong>{{ vehicle.odometer }}</strong></td>
-              <td>{{ vehicle.last_oil }}</td>
-              <td class="{% if vehicle.status_key == 'warning' %}fleet-table__warning{% endif %}">{{ vehicle.next_oil }}</td>
-              <td><span class="fleet-status fleet-status--{{ vehicle.status_key }}">{{ vehicle.status }}</span></td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="fleet-dashboard-grid">
-    <article class="panel fleet-costs-panel">
-      <header class="panel-header"><div><h2>Custos do mês</h2><p>Distribuição das despesas da frota</p></div><strong class="fleet-total">R$ 12.116,70</strong></header>
-      <div class="fleet-costs-content">
-        <div class="fleet-cost-donut" role="img" aria-label="Combustível representa 69 por cento dos custos"><div><strong>69%</strong><span>combustível</span></div></div>
-        <ul class="fleet-cost-list">
-          {% for cost in costs %}
-            <li><div><span>{{ cost.label }}</span><strong>{{ cost.value }}</strong></div><div class="fleet-cost-bar"><span class="fleet-cost-bar--{{ cost.tone }}" style="--bar-width: {{ cost.percent }}%"></span></div></li>
-          {% endfor %}
-        </ul>
-      </div>
-    </article>
-
-    <article class="panel fleet-maintenance-panel">
-      <header class="panel-header"><div><h2>Próximas manutenções</h2><p>Agenda preventiva da frota</p></div><button class="fleet-text-button" type="button" data-open-fleet-dialog="maintenance-dialog">Agendar</button></header>
-      <div class="fleet-maintenance-list">
-        {% for item in maintenance %}
-          <article{% if item.urgency == 'Alta' %} data-audible-alert data-alert-id="fleet-maintenance-high-{{ item.vehicle }}"{% endif %}><time datetime="{{ item.date.split('/') | reverse | join('-') }}"><strong>{{ item.date[:2] }}</strong><span>{{ item.date[3:5] }}/{{ item.date[6:] }}</span></time><div><strong>{{ item.type }}</strong><small>{{ item.vehicle }} · {{ item.value }}</small></div><span class="maintenance-urgency maintenance-urgency--{{ item.urgency | lower }}">{{ item.urgency }}</span></article>
-        {% endfor %}
-      </div>
-    </article>
-
-    <article class="panel fleet-interest-panel">
-      <header class="panel-header"><div><h2>Locais de interesse</h2><p>Pontos frequentes monitorados</p></div><span class="panel-count">12</span></header>
-      <div class="fleet-interest-content">
-        <div class="fleet-interest-map" aria-hidden="true"><span class="poi-dot poi-dot--one">U</span><span class="poi-dot poi-dot--two">A</span><span class="poi-dot poi-dot--three">P</span></div>
-        <ul><li><span>Escritórios</span><strong>4</strong></li><li><span>Almoxarifados</span><strong>3</strong></li><li><span>Postos parceiros</span><strong>3</strong></li><li><span>Restaurantes</span><strong>2</strong></li></ul>
-      </div>
-    </article>
-  </section>
-</main>
-
-{% macro dialog_header(title, description) %}
-  <header class="fleet-dialog__header"><div><h2>{{ title }}</h2><p>{{ description }}</p></div><button type="button" data-close-fleet-dialog aria-label="Fechar">×</button></header>
-{% endmacro %}
-
-{% macro field(label, name, placeholder='', type='text', required=true, value='') %}
-  <label class="fleet-field"><span>{{ label }}{% if required %}<b>*</b>{% endif %}</span><input type="{{ type }}" name="{{ name }}" placeholder="{{ placeholder }}" value="{{ value }}"{% if required %} required{% endif %}></label>
-{% endmacro %}
-
-{% macro select_field(label, name, options, required=true) %}
-  <label class="fleet-field"><span>{{ label }}{% if required %}<b>*</b>{% endif %}</span><select name="{{ name }}"{% if required %} required{% endif %}><option value="">Selecione</option>{% for option in options %}<option>{{ option }}</option>{% endfor %}</select></label>
-{% endmacro %}
-
-{% macro dialog_footer() %}<footer class="fleet-dialog__footer"><button class="dialog-cancel" type="button" data-close-fleet-dialog>Cancelar</button><button class="dialog-save" type="submit">Salvar</button></footer>{% endmacro %}
-
-<dialog class="fleet-dialog" id="vehicle-dialog">
-  <form method="post" action="{{ url_for('main.create_fleet_record', record_type='veiculo') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Criar veículo', 'Cadastre a identificação e a leitura inicial do veículo.') }}
-    <div class="fleet-dialog__body">
-      <section><h3>Identificação do veículo</h3><div class="fleet-form-grid">{{ field('Placa ou chassi', 'placa_chassi', 'Insira a placa ou chassi') }}{{ field('Apelido', 'apelido', 'Ex.: Strada 05') }}{{ select_field('Motorista', 'motorista', ['Sem motorista', 'Técnico Alfa', 'Técnica Beta', 'Técnico Gama'], false) }}{{ select_field('Grupo do veículo', 'grupo', ['Guimarânia', 'Patos de Minas', 'Presidente Olegário'], false) }}</div></section>
-      <section><h3>Informações adicionais</h3><div class="fleet-form-grid fleet-form-grid--three">{{ field('Marca', 'marca', 'Ex.: Fiat') }}{{ field('Modelo e tipo', 'modelo', 'Ex.: Strada Freedom') }}{{ field('Ano', 'ano', '2026', 'number', false) }}{{ select_field('Porte', 'porte', ['Leve', 'Médio', 'Pesado'], false) }}{{ select_field('Tipo no mapa', 'tipo_mapa', ['Carro', 'Utilitário', 'Moto'], false) }}{{ field('Tag', 'tag', 'Equipe ou identificação', 'text', false) }}</div></section>
-      <section><h3>Odômetro digital</h3><div class="fleet-form-grid fleet-form-grid--three">{{ field('Odômetro (km)', 'odometro', '10.000', 'number') }}{{ field('Data de cadastro', 'data_cadastro', '', 'date', false, today) }}{{ field('Hora da leitura', 'hora_leitura', '', 'time', false) }}</div></section>
-    </div>{{ dialog_footer() }}
-  </form>
-</dialog>
-
-<dialog class="fleet-dialog" id="driver-dialog">
-  <form method="post" enctype="multipart/form-data" action="{{ url_for('main.create_fleet_record', record_type='motorista') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Adicionar motorista', 'Cadastre os dados pessoais e a habilitação.') }}
-    <div class="fleet-dialog__body">
-      <section><h3>Cadastro do motorista</h3><label class="driver-photo"><span class="driver-photo__preview" aria-hidden="true">+</span><span>Adicionar foto de perfil</span><input type="file" name="foto" accept="image/png,image/jpeg"></label><div class="fleet-form-grid">{{ field('Nome do motorista', 'nome', 'Nome completo') }}{{ field('Contato', 'contato', '(DDD) Número do celular', 'tel') }}<label class="fleet-check"><input type="checkbox" name="acesso_app"><span>Permitir acesso ao aplicativo</span></label>{{ select_field('Identificador', 'identificador', ['Nenhum', 'Tag NFC', 'iButton', 'Cartão RFID'], false) }}</div></section>
-      <section><h3>Documentos do motorista</h3><div class="fleet-form-grid">{{ field('Matrícula', 'matricula', 'Nº da matrícula', 'text', false) }}{{ field('CPF', 'cpf', '000.000.000-00') }}{{ field('CNH', 'cnh', 'Nº da CNH') }}{{ select_field('Categoria', 'categoria', ['A', 'B', 'AB', 'C', 'D', 'E'], false) }}{{ field('1ª habilitação', 'primeira_habilitacao', '', 'date', false) }}{{ field('Validade', 'validade', '', 'date', false) }}</div></section>
-    </div>{{ dialog_footer() }}
-  </form>
-</dialog>
-
-<dialog class="fleet-dialog" id="oil-dialog">
-  <form method="post" action="{{ url_for('main.create_fleet_record', record_type='oleo') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Registrar troca de óleo', 'Informe a troca realizada e a próxima revisão.') }}<div class="fleet-dialog__body"><div class="fleet-form-grid">{{ select_field('Veículo', 'veiculo', ['DEM-0001 · Strada 01', 'DEM-0002 · Saveiro 02', 'DEM-0003 · Oroch 03', 'DEM-0004 · Fiorino 04']) }}{{ field('Última troca de óleo', 'ultima_troca', '', 'date') }}{{ field('Próxima troca', 'proxima_troca', '', 'date') }}{{ field('Quilometragem da troca', 'quilometragem', 'Ex.: 50.000', 'number') }}{{ field('Valor da troca', 'valor', 'R$ 0,00', 'number') }}</div></div>{{ dialog_footer() }}</form>
-</dialog>
-
-<dialog class="fleet-dialog" id="fuel-dialog">
-  <form method="post" action="{{ url_for('main.create_fleet_record', record_type='combustivel') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Registrar abastecimento', 'Adicione o valor da gasolina e os dados do abastecimento.') }}<div class="fleet-dialog__body"><div class="fleet-form-grid">{{ field('Data', 'data', '', 'date', true, today) }}{{ select_field('Veículo', 'veiculo', ['DEM-0001 · Strada 01', 'DEM-0002 · Saveiro 02', 'DEM-0003 · Oroch 03', 'DEM-0004 · Fiorino 04']) }}{{ field('Litros abastecidos', 'litros', '0,00', 'number') }}{{ field('Valor por litro', 'valor_litro', '6,19', 'number') }}{{ field('Quilometragem', 'quilometragem', 'Odômetro atual', 'number', false) }}{{ field('Posto', 'posto', 'Nome do posto', 'text', false) }}</div></div>{{ dialog_footer() }}</form>
-</dialog>
-
-<dialog class="fleet-dialog" id="fine-dialog">
-  <form method="post" action="{{ url_for('main.create_fleet_record', record_type='multa') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Registrar multa', 'Vincule a infração ao motorista e ao veículo.') }}<div class="fleet-dialog__body"><div class="fleet-form-grid">{{ field('Data', 'data', '', 'date', true, today) }}{{ select_field('Carro da frota', 'veiculo', ['DEM-0001 · Strada 01', 'DEM-0002 · Saveiro 02', 'DEM-0003 · Oroch 03', 'DEM-0004 · Fiorino 04']) }}{{ select_field('Motorista', 'motorista', ['Técnico Alfa', 'Técnica Beta', 'Técnico Gama']) }}{{ select_field('Tipo da multa', 'tipo', ['Velocidade', 'Estacionamento', 'Sinalização', 'Documentação', 'Outra']) }}{{ field('Valor da multa', 'valor', 'R$ 0,00', 'number') }}<label class="fleet-field fleet-field--wide"><span>Descrição<b>*</b></span><textarea name="descricao" placeholder="Descreva a ocorrência" required></textarea></label></div></div>{{ dialog_footer() }}</form>
-</dialog>
-
-<dialog class="fleet-dialog" id="expense-dialog">
-  <form method="post" action="{{ url_for('main.create_fleet_record', record_type='gasto') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Registrar outro gasto', 'Inclua despesas adicionais relacionadas à frota.') }}<div class="fleet-dialog__body"><div class="fleet-form-grid">{{ field('Data', 'data', '', 'date', true, today) }}{{ select_field('Tipo de gasto', 'tipo', ['Pedágio', 'Estacionamento', 'Lavagem', 'Peças', 'Documentação', 'Outro']) }}{{ field('Valor', 'valor', 'R$ 0,00', 'number') }}{{ select_field('Veículo', 'veiculo', ['DEM-0001 · Strada 01', 'DEM-0002 · Saveiro 02', 'DEM-0003 · Oroch 03', 'DEM-0004 · Fiorino 04'], false) }}<label class="fleet-field fleet-field--wide"><span>Descrição<b>*</b></span><textarea name="descricao" placeholder="Detalhes do gasto" required></textarea></label></div></div>{{ dialog_footer() }}</form>
-</dialog>
-
-<dialog class="fleet-dialog" id="maintenance-dialog">
-  <form method="post" action="{{ url_for('main.create_fleet_record', record_type='manutencao') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Agendar manutenção', 'Planeje a próxima manutenção do veículo.') }}<div class="fleet-dialog__body"><div class="fleet-form-grid">{{ field('Data', 'data', '', 'date') }}{{ select_field('Veículo', 'veiculo', ['DEM-0001 · Strada 01', 'DEM-0002 · Saveiro 02', 'DEM-0003 · Oroch 03', 'DEM-0004 · Fiorino 04']) }}{{ select_field('Tipo de manutenção', 'tipo', ['Troca de óleo', 'Revisão preventiva', 'Pneus', 'Freios', 'Alinhamento', 'Manutenção corretiva']) }}{{ field('Valor previsto', 'valor', 'R$ 0,00', 'number') }}<label class="fleet-field fleet-field--wide"><span>Observações</span><textarea name="observacoes" placeholder="Informações adicionais"></textarea></label></div></div>{{ dialog_footer() }}</form>
-</dialog>
-{% endblock %}
+{% extends "page.html" %}{% from "_ui.html" import source_note, metric, costs_chart, alert_list, errors_summary with context %}{% set active_page = 'fleet' %}{% block title %}Frota | UaiRotas{% endblock %}{% block page_content %}
+<div class="page-heading">
+<div>
+<p class="kicker">Gestão de veículos</p>
+<h1>Frota</h1>
+<p>Cadastros, custos e manutenção em um só lugar.</p>
+</div>{% if current_user.role == 'admin' %}<details class="action-menu">
+<summary class="button primary">Adicionar à frota <span aria-hidden="true">＋</span>
+</summary>
+<div class="action-dropdown">{% for kind, info in kinds.items() %}<button type="button" data-dialog-open="{{ info[1] }}">{{ info[0] }}</button>{% endfor %}</div>
+</details>{% endif %}</div>{{ source_note(source) }}
+<div class="metrics">{{ metric('Veículos', pagination.total) }}{{ metric('Motoristas', drivers|length) }}{{ metric('Quilometragem no mês', (overview.distance_m / 1000)|decimal_br + ' km') }}{{ metric('Custos no mês', overview.total_cents|money) }}</div>
+<section class="card">
+<div class="section-heading">
+<h2>Veículos da frota</h2>
+<a href="{{ url_for('main.fleet_reports') }}">Ver relatório</a>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Veículo</th>
+<th>Motorista</th>
+<th>Odômetro</th>
+<th>Troca de óleo</th>{% if current_user.role == 'admin' %}<th>Ação</th>{% endif %}</tr>
+</thead>
+<tbody>{% for vehicle in vehicles %}{% set oil=last_oil.get(vehicle.id) %}<tr>
+<td>
+<strong>{{ vehicle.nickname }}</strong>
+<small>{{ vehicle.plate }} · {{ vehicle.brand }} {{ vehicle.model }}</small>
+</td>
+<td>{{ vehicle.driver.name if vehicle.driver else 'Sem vínculo' }}</td>
+<td>{{ vehicle.odometer|decimal_br(0) }} km<small>{{ vehicle.reading_date.strftime('%d/%m/%Y') }}</small>
+</td>
+<td>{% if oil %}Última: {{ oil.date.strftime('%d/%m/%Y') }}<small>Próxima: {{ oil.next_date.strftime('%d/%m/%Y') }} · {{ oil.next_odometer|decimal_br(0) }} km</small>{% else %}Sem registro{% endif %}</td>{% if current_user.role == 'admin' %}<td>
+<a class="button subtle" href="{{ url_for('main.edit_fleet_record', kind='veiculo', record_id=vehicle.id) }}">Editar</a>
+</td>{% endif %}</tr>{% else %}<tr>
+<td colspan="5">Cadastre o primeiro veículo para começar.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+<nav class="pagination" aria-label="Páginas de veículos">{% if pagination.has_prev %}<a class="button" href="{{ url_for('main.fleet', pagina=pagination.prev_num, tipo=filter_kind) }}">Anterior</a>{% endif %}<span>{{ pagination.page }} / {{ pagination.pages or 1 }}</span>{% if pagination.has_next %}<a class="button" href="{{ url_for('main.fleet', pagina=pagination.next_num, tipo=filter_kind) }}">Próxima</a>{% endif %}</nav>
+</section>
+<div class="two-columns">
+<section class="card">
+<h2>Custos do mês</h2>{{ costs_chart(overview) }}</section>
+<section class="card">
+<h2>Abastecimento e locais</h2>
+<p class="large-value">{{ last_fuel.price_cents|money if last_fuel else '—' }} <small>/ litro</small>
+</p>
+<p class="muted">{% if last_fuel %}Último preço registrado em {{ last_fuel.date.strftime('%d/%m/%Y') }}.{% else %}Nenhum abastecimento registrado.{% endif %}</p>
+<h3>Locais de interesse · {{ places|length }}</h3>{% for place in places %}<p>
+<strong>{{ place.name }}</strong>
+<small>{{ place.address }}</small>
+</p>{% endfor %}</section>
+</div>
+<section id="maintenance" class="card">
+<h2>Manutenções agendadas</h2>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Veículo / serviço</th>
+<th>Estimativa</th>
+<th>Situação</th>{% if current_user.role == 'admin' %}<th>Ação</th>{% endif %}</tr>
+</thead>
+<tbody>{% for record in maintenance %}<tr>
+<td>{{ record.date.strftime('%d/%m/%Y') }}</td>
+<td>{{ record.vehicle.nickname }}<small>{{ record.subtype }}</small>
+</td>
+<td>{{ record.amount_cents|money }}</td>
+<td>
+<span class="status {{ 'status--late' if record.date < today else '' }}">{{ 'Atrasada' if record.date < today else 'Agendada' }}</span>
+</td>{% if current_user.role == 'admin' %}<td>
+<a class="button subtle" href="{{ url_for('main.maintenance_detail', record_id=record.id) }}">Concluir</a> <a href="{{ url_for('main.edit_fleet_record', kind='manutencao', record_id=record.id) }}">Editar</a>
+</td>{% endif %}</tr>{% else %}<tr>
+<td colspan="5">Nenhuma manutenção agendada.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h2>Atenção à frota</h2>{{ alert_list(alerts) }}</section>
+<section class="card">
+<div class="section-heading">
+<h2>Histórico de gastos</h2>
+<form class="filters" method="get">
+<label for="history-kind">Tipo<select id="history-kind" name="tipo">
+<option value="todos">Todos</option>{% for key, label in cost_labels.items() %}<option value="{{ key }}" {% if filter_kind == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+</label>
+<button type="submit" class="button">Filtrar</button>
+</form>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Tipo</th>
+<th>Veículo</th>
+<th>Descrição</th>
+<th>Valor</th>{% if current_user.role == 'admin' %}<th>Ação</th>{% endif %}</tr>
+</thead>
+<tbody>{% for record in history.items %}<tr>
+<td>{{ record.date.strftime('%d/%m/%Y') }}</td>
+<td>{{ cost_labels[record.kind] }}{% if record.status == 'scheduled' %}<small>Agendado · estimativa</small>{% endif %}</td>
+<td>{{ record.vehicle.nickname if record.vehicle else 'Sem veículo' }}</td>
+<td>{{ record.subtype }}<small>{{ record.description }}</small>
+</td>
+<td>{{ record.amount_cents|money }}</td>{% if current_user.role == 'admin' %}<td>
+<a href="{{ url_for('main.edit_fleet_record', kind=record.kind, record_id=record.id) }}">Editar</a>
+</td>{% endif %}</tr>{% else %}<tr>
+<td colspan="6">Nenhum registro encontrado.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+<nav class="pagination" aria-label="Páginas do histórico">{% if history.has_prev %}<a class="button" href="{{ url_for('main.fleet', historico=history.prev_num, tipo=filter_kind) }}">Anterior</a>{% endif %}<span>{{ history.page }} / {{ history.pages or 1 }}</span>{% if history.has_next %}<a class="button" href="{{ url_for('main.fleet', historico=history.next_num, tipo=filter_kind) }}">Próxima</a>{% endif %}</nav>
+</section>
+<section class="card">
+<h2>Motoristas · {{ drivers|length }}</h2>
+<div class="driver-list">{% for driver in drivers %}<article>{% if current_user.role == 'admin' and driver.photo %}<img src="{{ url_for('main.driver_photo', driver_id=driver.id) }}" width="48" height="48" alt="Foto de {{ driver.name }}" loading="lazy">{% endif %}<div>
+<strong>{{ driver.name }}</strong>
+<small>Categoria {{ driver.category or 'não informada' }}</small>
+</div>{% if current_user.role == 'admin' %}<a href="{{ url_for('main.edit_fleet_record', kind='motorista', record_id=driver.id) }}">Editar</a>{% endif %}</article>{% else %}<p>Nenhum motorista cadastrado.</p>{% endfor %}</div>
+</section>
+{% if current_user.role == 'admin' %}{% for kind, info in kinds.items() %}{% set prefix=kind + '-' %}{% set v=form_values if active_kind == kind else {} %}{% set e=errors if active_kind == kind else {} %}
+<dialog id="{{ info[1] }}" aria-labelledby="{{ prefix }}title" {% if e %}data-auto-open{% endif %}>
+<form method="post" enctype="multipart/form-data" action="{{ url_for('main.create_fleet_record', record_type=kind) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="submission_key" value="{{ v.get('submission_key', uuid()) }}">
+<div class="dialog-heading">
+<h2 id="{{ prefix }}title">{{ info[0] }}</h2>
+<button type="button" class="icon-button" data-dialog-close aria-label="Fechar">×</button>
+</div>
+<div class="dialog-body">{{ errors_summary(e) }}<p class="muted">* Campos obrigatórios</p>{% include "_fleet_fields.html" %}</div>
+<div class="dialog-footer">
+<button type="button" class="button" data-dialog-close>Cancelar</button>
+<button type="submit" class="button primary">Salvar</button>
+</div>
+</form>
+</dialog>{% endfor %}{% endif %}{% endblock %}

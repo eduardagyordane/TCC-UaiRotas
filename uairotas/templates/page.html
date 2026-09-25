@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% from "_ui.html" import flashes with context %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}{% include "_app_header.html" %}<main id="main-content" class="page-shell">{{ flashes() }}{% block page_content %}{% endblock %}</main>{% endblock %}

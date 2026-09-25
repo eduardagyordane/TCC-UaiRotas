@@ -1,0 +1,14 @@
+{% extends "page.html" %}{% set active_page = 'routes' %}{% block title %}{{ order.code }} | UaiRotas{% endblock %}{% block page_content %}<a href="{{ url_for('main.routes', data=order.date, colaborador=order.driver_id) }}">← Voltar às rotas</a>
+<div class="page-heading">
+<div>
+<p class="kicker">Ordem de serviço</p>
+<h1>{{ order.code }}</h1>
+</div>
+<span class="status status--{{ order.status }}">{{ status_labels[order.status] }}</span>
+</div>
+<section class="card">
+<dl class="detail-grid">{% for label, value in [('Cliente', order.customer), ('Endereço', order.address), ('Serviço', order.service), ('Colaborador', order.driver.name), ('Data', order.date.strftime('%d/%m/%Y')), ('Horário planejado', order.time), ('Tempo de atendimento', order.service_minutes|string + ' min'), ('Origem', 'Demonstrativa' if order.source == 'demo' else 'Cadastro local')] %}<div>
+<dt>{{ label }}</dt>
+<dd>{{ value }}</dd>
+</div>{% endfor %}</dl>
+</section>{% endblock %}

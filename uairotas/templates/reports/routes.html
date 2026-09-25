@@ -1,0 +1,70 @@
+<div class="report-intro">
+  <span class="report-scope">Atendimentos e deslocamentos</span>
+  <p>Ordens de serviço, produtividade e tempos das equipes no período selecionado.</p>
+</div>
+<div class="metrics">
+  {{ metric('OS concluídas', overview.complete|string + ' / ' + overview.orders_total|string, overview.completion|string + '% de conclusão') }}
+  {{ metric('Distância percorrida', (overview.distance_m / 1000)|decimal_br + ' km', overview.trip_count|string + ' viagem(ns) registrada(s)') }}
+  {{ metric('Atendimento médio', overview.service_average|string + ' min' if overview.complete else 'Sem atendimentos', 'Média das OS concluídas') }}
+  {{ metric('Almoços acima de 2h', overview.lunch_excesses, 'Ocorrências com duração maior que 120 min') }}
+</div>
+<div class="two-columns">
+  <section class="card">
+    <h2>OS concluídas por período</h2>
+    <p class="muted">Escala: 0 a {{ overview.series|map(attribute='orders')|max }} ordens.</p>
+    {{ columns(overview, 'orders') }}
+    {{ series_table(overview, 'orders') }}
+  </section>
+  <section class="card">
+    <h2>Produtividade por motorista</h2>
+    <p class="muted">Quantidade de OS concluídas nos filtros selecionados.</p>
+    {% for row in overview.drivers %}
+    <div class="bar-row">
+      <div><span>{{ row.driver.name }}</span><strong>{{ row.completed }} OS</strong></div>
+      <div class="bar-track"><span style="width:{{ row.bar }}%"></span></div>
+    </div>
+    {% else %}<p class="empty">Sem registros de atendimento ou viagem.</p>{% endfor %}
+  </section>
+</div>
+<div class="two-columns">
+  <section class="card">
+    <h2>Situação das ordens</h2>
+    {{ status_chart(overview) }}
+  </section>
+  <section class="card">
+    <h2>Ocorrências das rotas no período</h2>
+    <dl class="report-stat-grid">
+      <div><dt>OS atrasadas</dt><dd>{{ overview.statuses.get('late', 0) }}</dd></div>
+      <div><dt>Almoços acima de 2h</dt><dd>{{ overview.lunch_excesses }}</dd></div>
+      <div><dt>Desvios registrados</dt><dd>{{ overview.deviations }}</dd></div>
+    </dl>
+    <p class="muted">Contagens dos registros no intervalo selecionado. Consulte a Central de alertas para conferir as pendências atuais.</p>
+    <a href="{{ url_for('main.alerts') }}">Abrir central de alertas →</a>
+  </section>
+</div>
+<section class="card">
+  <h2>Distribuição do tempo por motorista</h2>
+  <p class="muted">Minutos registrados em deslocamento, atendimentos concluídos e almoço.</p>
+  <div class="time-legend"><span>■ Deslocamento</span><span>■ Atendimento</span><span>■ Almoço</span></div>
+  {% for row in overview.drivers %}
+  <div class="bar-row">
+    <strong>{{ row.driver.name }}</strong>
+    <div class="time-bar" role="img" aria-label="{{ row.times.transit }} minutos em deslocamento, {{ row.times.service }} em atendimento e {{ row.times.lunch }} em almoço">
+      {% for key in ['transit','service','lunch'] %}<span class="time-{{ key }}" style="width:{{ row.time_widths[key] }}%"></span>{% endfor %}
+    </div>
+    <small>{{ row.times.transit }} min deslocamento · {{ row.times.service }} min atendimento · {{ row.times.lunch }} min almoço</small>
+  </div>
+  {% else %}<p class="empty">Sem tempos registrados nos filtros selecionados.</p>{% endfor %}
+</section>
+<section class="card">
+  <h2>Detalhamento por motorista</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Motorista</th><th>OS concluídas</th><th>Distância</th><th>Deslocamento</th><th>Atendimento médio</th><th>Maior almoço</th><th>Desvios</th></tr></thead>
+    <tbody>{% for row in overview.drivers %}<tr>
+      <td>{{ row.driver.name }}</td><td>{{ row.completed }}</td><td>{{ (row.distance_m / 1000)|decimal_br }} km</td>
+      <td>{{ row.transit }} min</td><td>{{ row.service }} min</td>
+      <td><span class="{{ 'status status--late' if row.lunch > 120 else '' }}">{{ row.lunch }} min</span></td><td>{{ row.deviations }}</td>
+    </tr>{% else %}<tr><td colspan="7">Nenhum motorista com registros nos filtros selecionados.</td></tr>{% endfor %}</tbody>
+    <tfoot><tr><th>Total</th><td>{{ overview.complete }}</td><td>{{ (overview.distance_m / 1000)|decimal_br }} km</td><td colspan="3">—</td><td>{{ overview.deviations }}</td></tr></tfoot>
+  </table></div>
+</section>

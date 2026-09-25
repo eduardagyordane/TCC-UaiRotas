@@ -1,0 +1,98 @@
+<div class="report-intro">
+  <span class="report-scope">Custos e manutenção</span>
+  <p>Despesas e utilização dos veículos no período selecionado.</p>
+</div>
+<div class="metrics">
+  {{ metric('Custos realizados', overview.total_cents|money, overview.record_count|string + ' lançamento(s) pago(s)') }}
+  {{ metric('Combustível adquirido', (overview.fuel_ml / 1000)|decimal_br(3) + ' L', 'Volume registrado nos abastecimentos') }}
+  {{ metric('Quilometragem da frota', (overview.distance_m / 1000)|decimal_br + ' km') }}
+  {{ metric('Custo por km', overview.cost_per_km|money if overview.cost_per_km is not none else 'Sem distância', 'Custos e viagens do mesmo período') }}
+</div>
+<div class="two-columns">
+  <section class="card">
+    <h2>Composição dos custos</h2>
+    {{ costs_chart(overview) }}
+  </section>
+  <section class="card">
+    <h2>Evolução dos custos (R$)</h2>
+    <p class="muted">Escala: R$ 0,00 a {{ (overview.series|map(attribute='cents')|max)|money }}.</p>
+    {{ columns(overview, 'costs') }}
+    {{ series_table(overview, 'costs') }}
+  </section>
+</div>
+<div class="two-columns">
+  <section class="card">
+    <h2>Preço médio da gasolina (R$/L)</h2>
+    <p class="muted">Média por data ponderada pelos litros abastecidos. Eixo iniciado em zero.</p>
+    {% if overview.fuel_points %}
+    <svg class="line-chart" viewBox="0 0 550 220" role="img" aria-label="Preço médio do combustível por data; tabela abaixo">
+      <path class="chart-axis" d="M50 40 V180 H510"/>
+      <text x="4" y="44">{{ overview.fuel_axis|money }}</text><text x="18" y="180">0</text>
+      <polyline points="{% for point in overview.fuel_points %}{{ point.x }},{{ point.y }} {% endfor %}"/>
+      {% for point in overview.fuel_points %}<circle cx="{{ point.x }}" cy="{{ point.y }}" r="4"><title>{{ point.date }} · {{ point.cents|money }}/L</title></circle>{% endfor %}
+      <text x="50" y="210">{{ overview.fuel_points[0].date.strftime('%d/%m') }}</text>
+      <text x="465" y="210">{{ overview.fuel_points[-1].date.strftime('%d/%m') }}</text>
+    </svg>
+    <details class="data-alternative"><summary>Tabela de preços</summary>
+      <table><thead><tr><th>Data</th><th>Preço médio por litro</th></tr></thead>
+        <tbody>{% for point in overview.fuel_points %}<tr><td>{{ point.date.strftime('%d/%m/%Y') }}</td><td>{{ point.cents|money }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </details>
+    {% else %}<p class="empty">Sem abastecimentos nos filtros selecionados.</p>{% endif %}
+  </section>
+  <section class="card">
+    <h2>Custo por km de cada veículo</h2>
+    <p class="muted">Comparação em R$/km. Veículos sem distância não recebem uma razão calculada.</p>
+    {% for row in overview.ranking %}
+    <div class="bar-row">
+      <div><span>{{ row.vehicle.nickname }} · {{ row.vehicle.plate }}</span><strong>{{ row.cost_per_km|money }}/km</strong></div>
+      <div class="bar-track"><span style="width:{{ row.width }}%"></span></div>
+    </div>
+    {% else %}<p class="empty">Sem distância registrada para comparação.</p>{% endfor %}
+  </section>
+</div>
+<section class="card">
+  <h2>Manutenções no período</h2>
+  <dl class="report-stat-grid">
+    <div><dt>Concluídas</dt><dd>{{ overview.completed_maintenance }}</dd></div>
+    <div><dt>Ainda agendadas</dt><dd>{{ overview.scheduled_maintenance }}</dd></div>
+    <div><dt>Estimativa pendente</dt><dd>{{ overview.scheduled_cents|money }}</dd></div>
+  </dl>
+  <p class="muted">Estimativas de agendamentos não entram nos custos realizados. As datas e os vínculos selecionados também se aplicam às manutenções.</p>
+</section>
+<section class="card">
+  <h2>Detalhamento por veículo</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Veículo</th><th>Quilometragem</th><th>Custos</th><th>Custo/km</th></tr></thead>
+    <tbody>
+      {% for row in overview.vehicles %}<tr>
+        <td>{{ row.vehicle.nickname }}<small>{{ row.vehicle.plate }}</small></td>
+        <td>{{ (row.distance_m / 1000)|decimal_br }} km</td><td>{{ row.cents|money }}</td>
+        <td>{{ row.cost_per_km|money if row.cost_per_km is not none else 'Sem distância' }}</td>
+      </tr>{% else %}<tr><td colspan="4">Nenhum veículo com registros nos filtros selecionados.</td></tr>{% endfor %}
+      {% if not selected_vehicle %}<tr><th>Sem veículo vinculado</th><td>—</td><td>{{ overview.unattributed_cents|money }}</td><td>—</td></tr>{% endif %}
+    </tbody>
+    <tfoot><tr><th>Total realizado</th><td>{{ (overview.distance_m / 1000)|decimal_br }} km</td><td>{{ overview.total_cents|money }}</td><td>{{ overview.cost_per_km|money if overview.cost_per_km is not none else 'Sem distância' }}</td></tr></tfoot>
+  </table></div>
+</section>
+<section class="card">
+  <h2>Lançamentos da frota</h2>
+  <p class="muted">{{ records.total }} registro(s) nos filtros selecionados · até 25 por página.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Data</th><th>Tipo</th><th>Veículo / motorista</th><th>Descrição</th><th>Valor</th><th>Situação</th></tr></thead>
+    <tbody>{% for record in records.items %}<tr>
+      <td>{{ record.date.strftime('%d/%m/%Y') }}</td><td>{{ cost_labels[record.kind] }}</td>
+      <td>{{ record.vehicle.nickname if record.vehicle else 'Sem veículo' }}<small>{{ record.driver.name if record.driver else 'Sem motorista vinculado' }}</small></td>
+      <td>{{ record.subtype or cost_labels[record.kind] }}<small>{{ record.description }}</small>
+        {% if record.kind == 'oleo' and record.next_date %}<small>Próxima troca: {{ record.next_date.strftime('%d/%m/%Y') }} ou {{ record.next_odometer|decimal_br(0) }} km</small>{% endif %}
+      </td>
+      <td>{{ record.amount_cents|money }}</td>
+      <td><span class="status {{ 'status--done' if record.status == 'posted' else '' }}">{{ 'Realizado' if record.status == 'posted' else 'Agendado · estimativa' }}</span></td>
+    </tr>{% else %}<tr><td colspan="6">Nenhum lançamento nos filtros selecionados.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <nav class="pagination" aria-label="Páginas dos lançamentos">
+    {% if records.has_prev %}<a class="button" href="{{ url_for('main.fleet_reports', pagina=records.prev_num, **filter_params) }}">Anterior</a>{% endif %}
+    <span>{{ records.page }} / {{ records.pages or 1 }}</span>
+    {% if records.has_next %}<a class="button" href="{{ url_for('main.fleet_reports', pagina=records.next_num, **filter_params) }}">Próxima</a>{% endif %}
+  </nav>
+</section>

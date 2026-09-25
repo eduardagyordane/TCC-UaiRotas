@@ -1,525 +1,325 @@
-from datetime import date
+import csv
+from datetime import timedelta
+from io import StringIO
+import uuid
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
-from flask_login import login_required
+from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+from sqlalchemy.exc import IntegrityError
 
+from .analytics import COSTS, STATUS, active_alerts, period, report_conditions, report_data, report_filters, route_context, selected_date, source_info
+from .extensions import db
+from .fleet_service import KINDS, SUCCESS, build_record
+from .models import AlertAcknowledgement, AuditLog, Driver, FleetRecord, Place, ServiceOrder, Trip, User, Vehicle
+from .users import page_number, require_admin
+from .validation import Form, today
 
 main_bp = Blueprint("main", __name__)
 
 
-def _operational_map_data():
-    """Dados demonstrativos; serão substituídos por Cobli e IXC."""
-    return {
-        "demo": True,
-        "center": {"lat": -18.5789, "lng": -46.5181},
-        "zoom": 13,
-        "routes": [
-            {
-                "id": "carlos",
-                "name": "Técnico Alfa",
-                "color": "#d9233f",
-                "path": [
-                    {"lat": -18.6042, "lng": -46.5350},
-                    {"lat": -18.5934, "lng": -46.5272},
-                    {"lat": -18.5826, "lng": -46.5189},
-                    {"lat": -18.5718, "lng": -46.5078},
-                ],
-            },
-            {
-                "id": "ana",
-                "name": "Técnica Beta",
-                "color": "#2d78b7",
-                "path": [
-                    {"lat": -18.5617, "lng": -46.4934},
-                    {"lat": -18.5702, "lng": -46.5061},
-                    {"lat": -18.5786, "lng": -46.5210},
-                    {"lat": -18.5888, "lng": -46.5370},
-                ],
-            },
-            {
-                "id": "marcos",
-                "name": "Técnico Gama",
-                "color": "#d18d14",
-                "path": [
-                    {"lat": -18.5996, "lng": -46.5091},
-                    {"lat": -18.5890, "lng": -46.5054},
-                    {"lat": -18.5791, "lng": -46.4980},
-                    {"lat": -18.5684, "lng": -46.4862},
-                ],
-            },
-        ],
-        "vehicles": [
-            {"routeId": "carlos", "name": "Técnico Alfa", "status": "Em atendimento", "lat": -18.5718, "lng": -46.5078},
-            {"routeId": "ana", "name": "Técnica Beta", "status": "A caminho", "lat": -18.5786, "lng": -46.5210},
-            {"routeId": "marcos", "name": "Técnico Gama", "status": "Almoço há 2h18", "lat": -18.5791, "lng": -46.4980, "alert": True},
-        ],
-        "orders": [
-            {"routeId": "carlos", "label": "1", "code": "OS 10482", "lat": -18.5826, "lng": -46.5189},
-            {"routeId": "carlos", "label": "2", "code": "OS 10491", "lat": -18.5718, "lng": -46.5078},
-            {"routeId": "ana", "label": "1", "code": "OS 10496", "lat": -18.5702, "lng": -46.5061},
-            {"routeId": "ana", "label": "2", "code": "OS 10503", "lat": -18.5888, "lng": -46.5370},
-            {"routeId": "marcos", "label": "3", "code": "OS 10511", "lat": -18.5684, "lng": -46.4862},
-        ],
-        "places": [
-            {"name": "Escritório Uai Telecom", "kind": "Escritório", "lat": -18.5789, "lng": -46.5181},
-            {"name": "Almoxarifado", "kind": "Almoxarifado", "lat": -18.5921, "lng": -46.5207},
-            {"name": "Local de almoço", "kind": "Almoço", "lat": -18.5791, "lng": -46.4980},
-            {"name": "Posto credenciado", "kind": "Posto", "lat": -18.5660, "lng": -46.5129},
-        ],
-    }
+@main_bp.app_context_processor
+def common_context():
+    return {"status_labels": STATUS, "cost_labels": COSTS, "uuid": lambda: str(uuid.uuid4())}
 
 
 @main_bp.get("/")
 @login_required
 def home():
-    metrics = [
-        {"label": "Veículos ativos", "value": "18", "detail": "16 em rota", "icon": "car", "tone": "wine"},
-        {"label": "Técnicos em campo", "value": "12", "detail": "3 equipes", "icon": "users", "tone": "yellow"},
-        {"label": "Ordens de serviço", "value": "27", "detail": "19 concluídas", "icon": "clipboard", "tone": "blue"},
-        {"label": "Alertas ativos", "value": "3", "detail": "1 prioritário", "icon": "alert", "tone": "red"},
-    ]
-
-    service_orders = [
-        {
-            "code": "OS 10482",
-            "customer": "Cliente Demonstrativo A",
-            "service": "Instalação de fibra",
-            "technician": "Técnico Alfa",
-            "time": "08:30",
-            "status": "Em atendimento",
-            "status_key": "progress",
-        },
-        {
-            "code": "OS 10496",
-            "customer": "Cliente Demonstrativo B",
-            "service": "Manutenção de enlace",
-            "technician": "Técnica Beta",
-            "time": "10:00",
-            "status": "A caminho",
-            "status_key": "route",
-        },
-        {
-            "code": "OS 10503",
-            "customer": "Cliente Demonstrativo C",
-            "service": "Suporte técnico",
-            "technician": "Técnico Delta",
-            "time": "11:30",
-            "status": "Agendada",
-            "status_key": "scheduled",
-        },
-    ]
-
-    alerts = [
-        {
-            "title": "Almoço acima de 2 horas",
-            "description": "Técnico Gama está parado há 2h18.",
-            "time": "Agora",
-            "level": "high",
-        },
-        {
-            "title": "Manutenção próxima",
-            "description": "Veículo DEM-0001 vence em 450 km.",
-            "time": "Há 18 min",
-            "level": "medium",
-        },
-        {
-            "title": "Rota com atraso",
-            "description": "Equipe Norte está 24 min atrasada.",
-            "time": "Há 32 min",
-            "level": "low",
-        },
-    ]
-
-    today = date.today().strftime("%d/%m/%Y")
-    return render_template(
-        "home.html",
-        metrics=metrics,
-        service_orders=service_orders,
-        alerts=alerts,
-        today=today,
-        map_data=_operational_map_data(),
-    )
+    day = today()
+    data = route_context(day)
+    overview = report_data(day, day)
+    alerts = active_alerts(current_user.id)
+    return render_template("home.html", **data, overview=overview, alerts=alerts,
+                           vehicle_count=Vehicle.query.count(), driver_count=Driver.query.count(),
+                           source=source_info(), today=day)
 
 
 @main_bp.get("/rotas")
 @login_required
 def routes():
-    collaborators = [
-        {
-            "id": "carlos",
-            "name": "Técnico Alfa",
-            "vehicle": "Fiat Strada · DEM-0001",
-            "color": "#d9233f",
-            "status": "Em atendimento",
-            "status_key": "progress",
-            "distance": "38,4 km",
-            "orders": 4,
-            "completed": 3,
-        },
-        {
-            "id": "ana",
-            "name": "Técnica Beta",
-            "vehicle": "VW Saveiro · DEM-0002",
-            "color": "#2d78b7",
-            "status": "A caminho",
-            "status_key": "route",
-            "distance": "27,8 km",
-            "orders": 3,
-            "completed": 1,
-        },
-        {
-            "id": "marcos",
-            "name": "Técnico Gama",
-            "vehicle": "Renault Oroch · DEM-0003",
-            "color": "#d18d14",
-            "status": "Parado há 2h18",
-            "status_key": "alert",
-            "distance": "19,2 km",
-            "orders": 3,
-            "completed": 2,
-        },
-    ]
+    day = selected_date()
+    driver_raw = request.args.get("colaborador", "todos")
+    status = request.args.get("status", "todos")
+    if status != "todos" and status not in STATUS:
+        abort(400)
+    driver = None
+    if driver_raw != "todos":
+        form = Form({"driver": driver_raw})
+        driver = form.relation("driver", "Colaborador", Driver)
+        if form.errors:
+            abort(400)
+    data = route_context(day, driver.id if driver else None, status if status != "todos" else None)
+    alerts = [alert for alert in active_alerts(current_user.id, day) if alert["category"] == "routes"]
+    if driver or status != "todos":
+        allowed = {f"{kind}:{t.id}" for t in data["trips"] for kind in ("lunch", "deviation")} | {f"order-late:{o.id}" for o in data["orders"]}
+        alerts = [alert for alert in alerts if alert["id"] in allowed]
+    return render_template("routes.html", **data, drivers=Driver.query.order_by(Driver.name).all(),
+                           selected_collaborator=driver_raw, selected_status=status, selected_date=day,
+                           source=source_info(), alerts=alerts)
 
-    orders = [
-        {
-            "code": "OS 10482",
-            "customer": "Cliente Demonstrativo A",
-            "address": "Ponto demonstrativo A — Centro",
-            "service": "Instalação de fibra",
-            "collaborator": "carlos",
-            "technician": "Técnico Alfa",
-            "time": "08:30",
-            "status": "Em atendimento",
-            "status_key": "progress",
-            "sequence": 1,
-        },
-        {
-            "code": "OS 10491",
-            "customer": "Cliente Demonstrativo D",
-            "address": "Ponto demonstrativo B — Centro",
-            "service": "Reparo de conexão",
-            "collaborator": "carlos",
-            "technician": "Técnico Alfa",
-            "time": "10:20",
-            "status": "Agendada",
-            "status_key": "scheduled",
-            "sequence": 2,
-        },
-        {
-            "code": "OS 10496",
-            "customer": "Cliente Demonstrativo B",
-            "address": "Ponto demonstrativo C — Caramuru",
-            "service": "Manutenção de enlace",
-            "collaborator": "ana",
-            "technician": "Técnica Beta",
-            "time": "10:00",
-            "status": "A caminho",
-            "status_key": "route",
-            "sequence": 1,
-        },
-        {
-            "code": "OS 10503",
-            "customer": "Cliente Demonstrativo C",
-            "address": "Ponto demonstrativo D — Lagoa Grande",
-            "service": "Suporte técnico",
-            "collaborator": "ana",
-            "technician": "Técnica Beta",
-            "time": "11:30",
-            "status": "Agendada",
-            "status_key": "scheduled",
-            "sequence": 2,
-        },
-        {
-            "code": "OS 10511",
-            "customer": "Cliente Demonstrativo E",
-            "address": "Ponto demonstrativo E — Caiçaras",
-            "service": "Troca de equipamento",
-            "collaborator": "marcos",
-            "technician": "Técnico Gama",
-            "time": "13:30",
-            "status": "Atrasada",
-            "status_key": "late",
-            "sequence": 3,
-        },
-    ]
 
-    selected_collaborator = request.args.get("colaborador", "todos")
-    selected_status = request.args.get("status", "todos")
-    selected_date = request.args.get("data", date.today().isoformat())
+@main_bp.get("/ordens/<int:order_id>")
+@login_required
+def order_detail(order_id):
+    order = db.get_or_404(ServiceOrder, order_id)
+    return render_template("order.html", order=order)
 
-    filtered_orders = orders
-    if selected_collaborator != "todos":
-        filtered_orders = [
-            order for order in filtered_orders if order["collaborator"] == selected_collaborator
-        ]
-    if selected_status != "todos":
-        filtered_orders = [order for order in filtered_orders if order["status_key"] == selected_status]
 
-    return render_template(
-        "routes.html",
-        collaborators=collaborators,
-        orders=filtered_orders,
-        selected_collaborator=selected_collaborator,
-        selected_status=selected_status,
-        selected_date=selected_date,
-        map_data=_operational_map_data(),
-    )
+def render_fleet(values=None, errors=None, kind=None, status=200):
+    day = today()
+    overview = report_data(day.replace(day=1), day)
+    vehicle_query = Vehicle.query.order_by(Vehicle.nickname)
+    vehicle_page = vehicle_query.paginate(page=page_number(), per_page=25, error_out=False)
+    all_vehicles = vehicle_query.all()
+    last_oil = {}
+    for record in FleetRecord.query.filter_by(kind="oleo").order_by(FleetRecord.date, FleetRecord.id).all():
+        last_oil[record.vehicle_id] = record
+    history_query = FleetRecord.query.order_by(FleetRecord.date.desc(), FleetRecord.id.desc())
+    filter_kind = request.args.get("tipo", "todos")
+    if filter_kind != "todos":
+        if filter_kind not in COSTS:
+            abort(400)
+        history_query = history_query.filter_by(kind=filter_kind)
+    history_page = request.args.get("historico", "1")
+    if not history_page.isascii() or not history_page.isdigit() or len(history_page) > 6 or int(history_page) < 1:
+        abort(400)
+    history = history_query.paginate(page=int(history_page), per_page=25, error_out=False)
+    return render_template("fleet.html", vehicles=vehicle_page.items, pagination=vehicle_page,
+                           vehicle_options=all_vehicles, drivers=Driver.query.order_by(Driver.name).all(),
+                           last_oil=last_oil, overview=overview, history=history, filter_kind=filter_kind,
+                           maintenance=FleetRecord.query.filter_by(status="scheduled").order_by(FleetRecord.date).all(),
+                           last_fuel=FleetRecord.query.filter_by(kind="combustivel").order_by(FleetRecord.date.desc(), FleetRecord.id.desc()).first(),
+                           places=Place.query.order_by(Place.name).all(), source=source_info(),
+                           form_values=values or {}, errors=errors or {}, active_kind=kind, kinds=KINDS,
+                           alerts=[a for a in active_alerts(current_user.id) if a["category"] == "fleet"], today=day), status
 
 
 @main_bp.get("/frota")
 @login_required
 def fleet():
-    summary = [
-        {"label": "Veículos cadastrados", "value": "18", "detail": "16 ativos", "tone": "wine"},
-        {"label": "Técnicos vinculados", "value": "12", "detail": "3 equipes", "tone": "blue"},
-        {"label": "Quilometragem no mês", "value": "4.826 km", "detail": "+8,4%", "tone": "yellow"},
-        {"label": "Valor da gasolina", "value": "R$ 6,19", "detail": "último registro", "tone": "green"},
-        {"label": "Locais de interesse", "value": "12", "detail": "4 categorias", "tone": "purple"},
-    ]
-
-    vehicles = [
-        {
-            "plate": "DEM-0001",
-            "nickname": "Strada 01",
-            "model": "Fiat Strada Freedom 2023",
-            "driver": "Técnico Alfa",
-            "technician": "Técnico Alfa",
-            "odometer": "48.320 km",
-            "last_oil": "12/06/2026",
-            "next_oil": "50.000 km",
-            "status": "Em rota",
-            "status_key": "route",
-        },
-        {
-            "plate": "DEM-0002",
-            "nickname": "Saveiro 02",
-            "model": "VW Saveiro Robust 2022",
-            "driver": "Técnica Beta",
-            "technician": "Técnica Beta",
-            "odometer": "61.780 km",
-            "last_oil": "03/05/2026",
-            "next_oil": "Vence em 220 km",
-            "status": "Atenção",
-            "status_key": "warning",
-        },
-        {
-            "plate": "DEM-0003",
-            "nickname": "Oroch 03",
-            "model": "Renault Oroch Pro 2021",
-            "driver": "Técnico Gama",
-            "technician": "Técnico Gama",
-            "odometer": "72.405 km",
-            "last_oil": "22/07/2026",
-            "next_oil": "75.000 km",
-            "status": "Parado",
-            "status_key": "stopped",
-        },
-        {
-            "plate": "DEM-0004",
-            "nickname": "Fiorino 04",
-            "model": "Fiat Fiorino Endurance 2022",
-            "driver": "Sem motorista",
-            "technician": "Sem vínculo",
-            "odometer": "39.110 km",
-            "last_oil": "18/08/2026",
-            "next_oil": "42.000 km",
-            "status": "Disponível",
-            "status_key": "available",
-        },
-    ]
-
-    costs = [
-        {"label": "Combustível", "value": "R$ 8.420,30", "percent": 72, "tone": "red"},
-        {"label": "Manutenções", "value": "R$ 2.180,00", "percent": 39, "tone": "yellow"},
-        {"label": "Multas", "value": "R$ 586,40", "percent": 16, "tone": "blue"},
-        {"label": "Outros gastos", "value": "R$ 930,00", "percent": 24, "tone": "purple"},
-    ]
-
-    maintenance = [
-        {"vehicle": "DEM-0002", "type": "Troca de óleo", "date": "20/09/2026", "value": "R$ 349,90", "urgency": "Alta"},
-        {"vehicle": "DEM-0003", "type": "Revisão preventiva", "date": "26/09/2026", "value": "R$ 680,00", "urgency": "Média"},
-        {"vehicle": "DEM-0004", "type": "Alinhamento", "date": "02/10/2026", "value": "R$ 180,00", "urgency": "Normal"},
-    ]
-
-    return render_template(
-        "fleet.html",
-        summary=summary,
-        vehicles=vehicles,
-        costs=costs,
-        maintenance=maintenance,
-        today=date.today().isoformat(),
-    )
+    return render_fleet()
 
 
 @main_bp.post("/frota/registros/<record_type>")
 @login_required
 def create_fleet_record(record_type):
-    required_fields = {
-        "veiculo": ("placa_chassi", "apelido", "marca", "modelo", "odometro"),
-        "motorista": ("nome", "contato", "cpf", "cnh"),
-        "oleo": ("veiculo", "ultima_troca", "proxima_troca", "quilometragem", "valor"),
-        "combustivel": ("data", "veiculo", "litros", "valor_litro"),
-        "multa": ("data", "veiculo", "motorista", "tipo", "descricao", "valor"),
-        "gasto": ("data", "tipo", "descricao", "valor"),
-        "manutencao": ("data", "veiculo", "tipo", "valor"),
-    }
-    success_messages = {
-        "veiculo": "Veículo registrado com sucesso.",
-        "motorista": "Motorista registrado com sucesso.",
-        "oleo": "Troca de óleo registrada com sucesso.",
-        "combustivel": "Abastecimento registrado com sucesso.",
-        "multa": "Multa registrada com sucesso.",
-        "gasto": "Gasto registrado com sucesso.",
-        "manutencao": "Manutenção agendada com sucesso.",
-    }
-
-    if record_type not in required_fields:
+    require_admin()
+    if record_type not in KINDS:
         abort(404)
-
-    missing = [field for field in required_fields[record_type] if not request.form.get(field, "").strip()]
-    if missing:
-        flash("Preencha todos os campos obrigatórios antes de salvar.", "error")
+    record, errors = build_record(record_type, request.form, request.files, current_user)
+    values = {key: value for key, value in request.form.items() if key != "csrf_token"}
+    if errors:
+        return render_fleet(values, errors, record_type, 422)
+    if isinstance(record, FleetRecord) and FleetRecord.query.filter_by(submission_key=record.submission_key).first():
+        flash("Este registro já foi salvo.", "info")
         return redirect(url_for("main.fleet"))
-
-    flash(success_messages[record_type], "success")
+    try:
+        db.session.add(record)
+        if isinstance(record, FleetRecord) and record.vehicle_id and record.odometer is not None:
+            vehicle = db.session.get(Vehicle, record.vehicle_id)
+            if record.date >= vehicle.reading_date:
+                vehicle.odometer = record.odometer
+                vehicle.reading_date = record.date
+        db.session.flush()
+        db.session.add(AuditLog(actor_id=current_user.id, action="create", entity=record_type, entity_id=record.id))
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return render_fleet(values, {"_form": "Este cadastro já existe ou foi salvo em outra solicitação. Confira a listagem."}, record_type, 409)
+    flash(SUCCESS[record_type], "success")
     return redirect(url_for("main.fleet"))
 
 
-def _selected_report_period():
-    periods = {
-        "7dias": "Últimos 7 dias",
-        "30dias": "Últimos 30 dias",
-        "90dias": "Últimos 90 dias",
-        "ano": "Ano de 2026",
-    }
-    selected = request.args.get("periodo", "30dias")
-    if selected not in periods:
-        selected = "30dias"
-    return selected, periods
+@main_bp.post("/frota/manutencoes/<int:record_id>/concluir")
+@login_required
+def complete_maintenance(record_id):
+    require_admin()
+    record = db.get_or_404(FleetRecord, record_id)
+    if record.kind != "manutencao" or record.status != "scheduled":
+        abort(400)
+    form = Form(request.form)
+    completed_date = form.date("data", "Data da realização", past=True)
+    actual_cost = form.number("valor", "Valor pago", scale=100, minimum=0.01, maximum=1_000_000)
+    if form.errors:
+        return render_template("maintenance.html", record=record, errors=form.errors, form_values=request.form, today=today()), 422
+    record.date, record.amount_cents, record.status = completed_date, actual_cost, "posted"
+    db.session.add(AuditLog(actor_id=current_user.id, action="complete", entity="manutencao", entity_id=record.id))
+    db.session.commit()
+    flash("Manutenção concluída e incluída nos custos pela data de realização.", "success")
+    return redirect(url_for("main.fleet"))
+
+
+@main_bp.get("/frota/manutencoes/<int:record_id>")
+@login_required
+def maintenance_detail(record_id):
+    require_admin()
+    record = db.get_or_404(FleetRecord, record_id)
+    if record.kind != "manutencao" or record.status != "scheduled":
+        abort(404)
+    return render_template("maintenance.html", record=record, errors={}, form_values={}, today=today())
+
+
+@main_bp.get("/motoristas/<int:driver_id>/foto")
+@login_required
+def driver_photo(driver_id):
+    require_admin()
+    driver = db.get_or_404(Driver, driver_id)
+    if not driver.photo:
+        abort(404)
+    return Response(driver.photo, mimetype=driver.photo_mime)
+
+
+def fleet_values(kind, record):
+    if kind == "veiculo":
+        fields = {"placa_chassi": "plate", "apelido": "nickname", "marca": "brand", "modelo": "model", "ano": "year",
+                  "grupo": "group", "porte": "size", "tipo_mapa": "map_type", "tag": "tag", "odometro": "odometer",
+                  "data_cadastro": "reading_date", "hora_leitura": "reading_time", "motorista": "driver_id"}
+    elif kind == "motorista":
+        fields = {"nome": "name", "contato": "phone", "cpf": "cpf", "cnh": "license_number", "categoria": "category",
+                  "primeira_habilitacao": "first_license", "validade": "license_expiry", "matricula": "registration", "identificador": "identifier"}
+    else:
+        fields = {"veiculo": "vehicle_id", "motorista": "driver_id", "data": "date", "ultima_troca": "date",
+                  "quilometragem": "odometer", "proxima_troca": "next_date", "proxima_quilometragem": "next_odometer",
+                  "descricao": "description", "observacoes": "description", "posto": "description", "tipo": "subtype"}
+    values = {key: getattr(record, attribute) if getattr(record, attribute) is not None else "" for key, attribute in fields.items()}
+    if isinstance(record, FleetRecord):
+        values.update(valor=f"{record.amount_cents / 100:.2f}", valor_litro=f"{(record.price_cents or 0) / 100:.2f}",
+                      litros=f"{(record.fuel_ml or 0) / 1000:.3f}")
+    return values
+
+
+@main_bp.route("/frota/cadastros/<kind>/<int:record_id>/editar", methods=["GET", "POST"])
+@login_required
+def edit_fleet_record(kind, record_id):
+    require_admin()
+    if kind not in KINDS:
+        abort(404)
+    model = Vehicle if kind == "veiculo" else Driver if kind == "motorista" else FleetRecord
+    record = db.get_or_404(model, record_id)
+    if model is FleetRecord and record.kind != kind:
+        abort(404)
+    errors = {}
+    values = fleet_values(kind, record)
+    if request.method == "POST":
+        values = {key: value for key, value in request.form.items() if key != "csrf_token"}
+        candidate, errors = build_record(kind, values, request.files, current_user, existing=record)
+        if isinstance(record, FleetRecord) and record.odometer is not None:
+            if any(getattr(candidate, key) != getattr(record, key) for key in ("odometer", "date", "vehicle_id")):
+                errors["_form"] = "Preserve veículo, data e quilometragem desta leitura histórica. Registre uma nova leitura para atualizar o odômetro."
+        if not errors:
+            for column in model.__table__.columns:
+                if column.name not in ("id", "source", "created_by", "submission_key"):
+                    value = getattr(candidate, column.name)
+                    if column.name in ("photo", "photo_mime") and value is None:
+                        continue
+                    setattr(record, column.name, value)
+            db.session.add(AuditLog(actor_id=current_user.id, action="update", entity=kind, entity_id=record.id))
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                errors["_form"] = "Este cadastro conflita com um registro existente. Confira os dados."
+            else:
+                flash("Cadastro atualizado com sucesso.", "success")
+                return redirect(url_for("main.fleet"))
+    history = db.session.query(AuditLog, User.name).outerjoin(User, User.id == AuditLog.actor_id).filter(
+        AuditLog.entity == kind, AuditLog.entity_id == record_id).order_by(AuditLog.created_at.desc()).limit(20).all()
+    return render_template("fleet_edit.html", kind=kind, record=record, v=values, e=errors, prefix="edit-", today=today(),
+                           kinds=KINDS, vehicle_options=Vehicle.query.order_by(Vehicle.nickname).all(),
+                           drivers=Driver.query.order_by(Driver.name).all(), history=history), 422 if errors else 200
+
+
+@main_bp.get("/alertas")
+@login_required
+def alerts():
+    return render_template("alerts.html", alerts=active_alerts(current_user.id), source=source_info())
+
+
+@main_bp.post("/alertas/reconhecer")
+@login_required
+def acknowledge_alert():
+    occurrence_id = request.form.get("occurrence_id", "")
+    if occurrence_id not in {item["id"] for item in active_alerts(current_user.id)}:
+        abort(400)
+    key = (current_user.id, occurrence_id)
+    if db.session.get(AlertAcknowledgement, key) is None:
+        db.session.add(AlertAcknowledgement(user_id=current_user.id, occurrence_id=occurrence_id))
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+    flash("Alerta marcado como visto. A ocorrência continuará visível enquanto estiver pendente.", "success")
+    return redirect(url_for("main.alerts"))
+
+
+def render_report(module):
+    selected, periods, start, end = period()
+    vehicle, driver = report_filters()
+    vehicle_id, driver_id = vehicle.id if vehicle else None, driver.id if driver else None
+    params = {"periodo": selected}
+    if vehicle:
+        params["veiculo"] = vehicle.id
+    if driver:
+        params["motorista"] = driver.id
+    records = None
+    if module == "fleet":
+        condition, _, _ = report_conditions(start, end, vehicle_id, driver_id)
+        records = FleetRecord.query.filter(condition).order_by(FleetRecord.date.desc(), FleetRecord.id.desc()).paginate(
+            page=page_number(), per_page=25, error_out=False)
+    return render_template("reports.html", module=module,
+                           overview=report_data(start, end, vehicle_id, driver_id), selected_period=selected, periods=periods,
+                           vehicle_options=Vehicle.query.order_by(Vehicle.nickname).all(),
+                           driver_options=Driver.query.order_by(Driver.name).all(), selected_vehicle=vehicle, selected_driver=driver,
+                           filter_params=params, source=source_info(), records=records)
 
 
 @main_bp.get("/relatorios")
 @login_required
 def reports():
-    selected_period, periods = _selected_report_period()
-    metrics = [
-        {"label": "Ordens concluídas", "value": "486", "detail": "+11,8%", "trend": "up", "tone": "red"},
-        {"label": "Quilometragem rodada", "value": "4.826 km", "detail": "+8,4%", "trend": "up", "tone": "blue"},
-        {"label": "Custo operacional", "value": "R$ 12.116,70", "detail": "−3,2%", "trend": "down", "tone": "yellow"},
-        {"label": "Tempo médio por OS", "value": "1h24", "detail": "−9 min", "trend": "down", "tone": "green"},
-    ]
-    monthly = [
-        {"month": "Abr", "orders": 328, "distance": 3220},
-        {"month": "Mai", "orders": 351, "distance": 3540},
-        {"month": "Jun", "orders": 389, "distance": 3870},
-        {"month": "Jul", "orders": 412, "distance": 4210},
-        {"month": "Ago", "orders": 448, "distance": 4550},
-        {"month": "Set", "orders": 486, "distance": 4826},
-    ]
-    report_cards = [
-        {
-            "title": "Relatório de rotas",
-            "description": "Produtividade, deslocamentos, ordens, tempos e desvios por colaborador.",
-            "value": "91%",
-            "label": "aderência às rotas",
-            "endpoint": "main.route_reports",
-            "tone": "red",
-        },
-        {
-            "title": "Relatório de frota",
-            "description": "Custos, combustível, quilometragem, multas e manutenções dos veículos.",
-            "value": "R$ 2,51",
-            "label": "custo médio por km",
-            "endpoint": "main.fleet_reports",
-            "tone": "blue",
-        },
-    ]
-    alerts = [
-        {"label": "Almoços acima de 2 horas", "value": "5", "detail": "2 a menos que no período anterior", "tone": "warning"},
-        {"label": "Manutenções vencendo", "value": "3", "detail": "1 veículo com prioridade alta", "tone": "danger"},
-        {"label": "Desvios de rota", "value": "9", "detail": "−18% no período", "tone": "info"},
-    ]
-    return render_template(
-        "reports_overview.html",
-        metrics=metrics,
-        monthly=monthly,
-        report_cards=report_cards,
-        alerts=alerts,
-        periods=periods,
-        selected_period=selected_period,
-    )
+    return render_report("overview")
 
 
 @main_bp.get("/relatorios/frota")
 @login_required
 def fleet_reports():
-    selected_period, periods = _selected_report_period()
-    metrics = [
-        {"label": "Custo total", "value": "R$ 12.116,70", "detail": "−3,2%", "trend": "down", "tone": "red"},
-        {"label": "Custo por km", "value": "R$ 2,51", "detail": "−R$ 0,18", "trend": "down", "tone": "blue"},
-        {"label": "Consumo médio", "value": "10,8 km/L", "detail": "+0,6 km/L", "trend": "up", "tone": "green"},
-        {"label": "Manutenções", "value": "7", "detail": "3 programadas", "trend": "neutral", "tone": "yellow"},
-    ]
-    costs = [
-        {"label": "Combustível", "value": "R$ 8.420,30", "percent": 69, "tone": "red"},
-        {"label": "Manutenções", "value": "R$ 2.180,00", "percent": 18, "tone": "yellow"},
-        {"label": "Outros gastos", "value": "R$ 930,00", "percent": 8, "tone": "purple"},
-        {"label": "Multas", "value": "R$ 586,40", "percent": 5, "tone": "blue"},
-    ]
-    fuel_history = [
-        {"month": "Abr", "price": "5,72", "height": 42},
-        {"month": "Mai", "price": "5,84", "height": 49},
-        {"month": "Jun", "price": "5,91", "height": 55},
-        {"month": "Jul", "price": "6,03", "height": 64},
-        {"month": "Ago", "price": "6,11", "height": 72},
-        {"month": "Set", "price": "6,19", "height": 80},
-    ]
-    vehicles = [
-        {"vehicle": "Strada 01", "plate": "DEM-0001", "driver": "Técnico Alfa", "distance": "1.486 km", "fuel": "11,6 km/L", "cost": "R$ 3.248,20", "maintenance": "Em dia", "status": "good"},
-        {"vehicle": "Saveiro 02", "plate": "DEM-0002", "driver": "Técnica Beta", "distance": "1.279 km", "fuel": "10,9 km/L", "cost": "R$ 3.510,40", "maintenance": "Vence em 220 km", "status": "warning"},
-        {"vehicle": "Oroch 03", "plate": "DEM-0003", "driver": "Técnico Gama", "distance": "1.164 km", "fuel": "9,8 km/L", "cost": "R$ 3.126,80", "maintenance": "Agendada", "status": "scheduled"},
-        {"vehicle": "Fiorino 04", "plate": "DEM-0004", "driver": "Sem motorista", "distance": "897 km", "fuel": "10,5 km/L", "cost": "R$ 2.231,30", "maintenance": "Em dia", "status": "good"},
-    ]
-    return render_template(
-        "reports_fleet.html",
-        metrics=metrics,
-        costs=costs,
-        fuel_history=fuel_history,
-        vehicles=vehicles,
-        periods=periods,
-        selected_period=selected_period,
-    )
+    return render_report("fleet")
 
 
 @main_bp.get("/relatorios/rotas")
 @login_required
 def route_reports():
-    selected_period, periods = _selected_report_period()
-    metrics = [
-        {"label": "Distância percorrida", "value": "4.826 km", "detail": "+8,4%", "trend": "up", "tone": "red"},
-        {"label": "Ordens concluídas", "value": "486", "detail": "92% do total", "trend": "up", "tone": "blue"},
-        {"label": "Aderência às rotas", "value": "91%", "detail": "+4 pontos", "trend": "up", "tone": "green"},
-        {"label": "Tempo médio em trânsito", "value": "2h17", "detail": "−12 min", "trend": "down", "tone": "yellow"},
-    ]
-    collaborators = [
-        {"name": "Técnico Alfa", "initials": "CM", "vehicle": "DEM-0001", "distance": "1.486 km", "completed": 168, "completion": 96, "transit": "2h04", "service": "1h18", "lunch": "1h08", "deviations": 1, "tone": "red"},
-        {"name": "Técnica Beta", "initials": "AP", "vehicle": "DEM-0002", "distance": "1.279 km", "completed": 154, "completion": 92, "transit": "2h12", "service": "1h26", "lunch": "1h17", "deviations": 3, "tone": "blue"},
-        {"name": "Técnico Gama", "initials": "MS", "vehicle": "DEM-0003", "distance": "1.164 km", "completed": 139, "completion": 86, "transit": "2h35", "service": "1h31", "lunch": "2h18", "deviations": 5, "tone": "yellow"},
-        {"name": "Técnico Delta", "initials": "RL", "vehicle": "DEM-0004", "distance": "897 km", "completed": 125, "completion": 89, "transit": "2h21", "service": "1h22", "lunch": "1h12", "deviations": 0, "tone": "purple"},
-    ]
-    daily_times = [
-        {"day": "Seg", "minutes": 151, "height": 74},
-        {"day": "Ter", "minutes": 143, "height": 65},
-        {"day": "Qua", "minutes": 132, "height": 54},
-        {"day": "Qui", "minutes": 139, "height": 61},
-        {"day": "Sex", "minutes": 128, "height": 49},
-        {"day": "Sáb", "minutes": 112, "height": 35},
-    ]
-    return render_template(
-        "reports_routes.html",
-        metrics=metrics,
-        collaborators=collaborators,
-        daily_times=daily_times,
-        periods=periods,
-        selected_period=selected_period,
-    )
+    return render_report("routes")
+
+
+def csv_safe(value):
+    text = str(value)
+    return "'" + text if text.lstrip().startswith(("=", "+", "-", "@", "\t", "\r")) else text
+
+
+@main_bp.get("/relatorios/<module>/exportar.csv")
+@login_required
+def export_report(module):
+    if module not in ("overview", "fleet", "routes"):
+        abort(404)
+    _, _, start, end = period()
+    vehicle, driver = report_filters()
+    data = report_data(start, end, vehicle.id if vehicle else None, driver.id if driver else None)
+    output = StringIO(newline="")
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow(["UaiRotas", source_info()["label"], start.isoformat(), end.isoformat(),
+                     "Veículo", csv_safe(vehicle.nickname + " · " + vehicle.plate) if vehicle else "Todos",
+                     "Motorista", csv_safe(driver.name) if driver else "Todos"])
+    if module == "fleet":
+        writer.writerow(["Veículo", "Placa/chassi", "Distância (m)", "Custo (centavos)"])
+        for row in data["vehicles"]:
+            writer.writerow([csv_safe(row["vehicle"].nickname), csv_safe(row["vehicle"].plate), row["distance_m"], row["cents"]])
+        writer.writerow(["Sem veículo vinculado", "", 0, data["unattributed_cents"]])
+    elif module == "routes":
+        writer.writerow(["Colaborador", "OS concluídas", "Distância (m)", "Trânsito (min)", "Maior almoço (min)", "Desvios"])
+        for row in data["drivers"]:
+            writer.writerow([csv_safe(row["driver"].name), row["completed"], row["distance_m"], row["transit"], row["lunch"], row["deviations"]])
+    else:
+        writer.writerow(["Período", "OS concluídas", "Custos (centavos)"])
+        writer.writerows((row["label"], row["orders"], row["cents"]) for row in data["series"])
+    return Response("\ufeff" + output.getvalue(), mimetype="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="uairotas-{module}-{start}-{end}.csv"'})

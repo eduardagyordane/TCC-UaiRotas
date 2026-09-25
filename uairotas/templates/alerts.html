@@ -1,0 +1,7 @@
+{% extends "page.html" %}{% from "_ui.html" import source_note, alert_list with context %}{% block title %}Alertas | UaiRotas{% endblock %}{% block page_content %}<div class="page-heading">
+<div>
+<p class="kicker">Acompanhamento</p>
+<h1>Central de alertas</h1>
+<p>Marcar como visto silencia a ocorrência para você, sem resolver a pendência.</p>
+</div>
+</div>{{ source_note(source) }}<section class="card">{{ alert_list(alerts, true) }}</section>{% endblock %}

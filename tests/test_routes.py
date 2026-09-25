@@ -1,80 +1,39 @@
-def login(client):
-    return client.post(
-        "/login",
-        data={"email": "admin@example.invalid", "password": "senha-de-teste-sem-segredo"},
-    )
+import json,re
+from datetime import timedelta
+import pytest
+from uairotas.validation import today
 
+def map_payload(response):
+    return json.loads(re.search(r'<script id="operational-map-data" type="application/json">(.*?)</script>', response.text, re.S).group(1))
 
-def test_routes_requires_authentication(client):
-    response = client.get("/rotas", follow_redirects=False)
+@pytest.mark.parametrize("url",["/","/rotas","/frota","/relatorios","/relatorios/frota","/relatorios/rotas","/usuarios","/perfil","/alertas","/ordens/1"])
+def test_private_pages_require_login(client,url):
+    assert client.get(url).status_code==302
 
-    assert response.status_code == 302
-    assert "/login" in response.headers["Location"]
+def test_filters_apply_to_orders_routes_and_map(authenticated,demo):
+    data=map_payload(authenticated.get("/rotas?colaborador=2&status=route"))
+    assert len(data["routes"])==1 and data["routes"][0]["driver_id"]==2
+    assert len(data["orders"])==1 and data["orders"][0]["status"]=="A caminho"
+    assert data["vehicles"]==[] and data["routes"][0]["path_kind"]=="planned"
+    route_id=data["routes"][0]["id"]
+    assert data["orders"][0]["route_id"]==route_id
 
+def test_date_filter_and_empty_state(app,authenticated,demo):
+    with app.app_context(): previous=today()-timedelta(days=1)
+    a=map_payload(authenticated.get("/rotas"))
+    b=map_payload(authenticated.get("/rotas",query_string={"data":previous.isoformat()}))
+    assert {o["id"] for o in a["orders"]}.isdisjoint({o["id"] for o in b["orders"]})
+    assert all(o["status"]=="Concluída" for o in b["orders"])
+    empty=map_payload(authenticated.get("/rotas?data=2001-01-01"))
+    assert empty["routes"]==[] and empty["orders"]==[]
 
-def test_routes_page_renders_map_orders_and_collaborators(client):
-    login(client)
-    response = client.get("/rotas")
+@pytest.mark.parametrize("query",["data=bad","colaborador=999","colaborador=x","status=invalid"])
+def test_invalid_filters_return_friendly_400(authenticated,query):
+    response=authenticated.get("/rotas?"+query)
+    assert response.status_code==400 and b"Confira" in response.data
 
-    assert response.status_code == 200
-    assert b"Rotas e ordens de servi" in response.data
-    assert b'data-mapbox-map' in response.data
-    assert b'id="routes-mapbox-map"' in response.data
-    assert "Técnico Alfa".encode() in response.data
-    assert "Técnica Beta".encode() in response.data
-    assert "Técnico Gama".encode() in response.data
-    assert b"OS 10482" in response.data
-
-
-def test_routes_page_contains_ixc_order_details(client):
-    login(client)
-    response = client.get("/rotas")
-
-    assert b"Cliente Demonstrativo A" in response.data
-    assert b"Ponto demonstrativo A" in response.data
-    assert b"Instala" in response.data
-
-
-def test_routes_page_contains_interest_places_and_lunch_alert(client):
-    login(client)
-    response = client.get("/rotas")
-
-    assert b"Almoxarifado" in response.data
-    assert b"Escrit" in response.data
-    assert b"Posto" in response.data
-    assert b"Almo" in response.data
-    assert b"2h18" in response.data
-
-
-def test_routes_filter_by_collaborator(client):
-    login(client)
-    response = client.get("/rotas?colaborador=ana")
-
-    assert response.status_code == 200
-    assert b"OS 10496" in response.data
-    assert b"OS 10503" in response.data
-    assert b"Cliente Demonstrativo A" not in response.data
-
-
-def test_routes_filter_by_status(client):
-    login(client)
-    response = client.get("/rotas?status=late")
-
-    assert response.status_code == 200
-    assert b"OS 10511" in response.data
-    assert b"Mercado S" not in response.data
-
-
-def test_routes_empty_filter_result(client):
-    login(client)
-    response = client.get("/rotas?colaborador=carlos&status=late")
-
-    assert response.status_code == 200
-    assert b"Nenhuma ordem encontrada" in response.data
-
-
-def test_home_navigation_links_to_routes(client):
-    login(client)
-    response = client.get("/")
-
-    assert b'href="/rotas"' in response.data
+def test_order_details_match_real_record(authenticated,demo):
+    response=authenticated.get("/ordens/1")
+    assert response.status_code==200 and b"DEMO-1-00-1" in response.data
+    assert b"Cliente demonstrativo A" in response.data and "Instalação de fibra".encode() in response.data
+    assert authenticated.get("/ordens/99999").status_code==404

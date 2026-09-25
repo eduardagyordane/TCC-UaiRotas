@@ -1,74 +1,76 @@
-{% extends "base.html" %}
-{% block title %}Usuários | UaiRotas{% endblock %}
-{% block body_class %}app-page{% endblock %}
-
-{% macro user_field(label, name, value='', type='text', placeholder='', required=true) %}
-  <label class="user-field"><span>{{ label }}{% if required %}<b>*</b>{% endif %}</span><input type="{{ type }}" name="{{ name }}" value="{{ value or '' }}" placeholder="{{ placeholder }}"{% if required %} required{% endif %}></label>
-{% endmacro %}
-
-{% macro role_field(value='') %}
-  <label class="user-field"><span>Função<b>*</b></span><select name="role" required><option value="">Selecione</option><option value="admin"{% if value == 'admin' %} selected{% endif %}>Administrador</option><option value="supervisor"{% if value == 'supervisor' %} selected{% endif %}>Supervisor</option></select></label>
-{% endmacro %}
-
-{% macro dialog_header(title, description) %}
-  <header class="user-dialog__header"><div><h2>{{ title }}</h2><p>{{ description }}</p></div><button type="button" data-close-user-dialog aria-label="Fechar">×</button></header>
-{% endmacro %}
-
-{% macro dialog_footer() %}
-  <footer class="user-dialog__footer"><button class="dialog-cancel" type="button" data-close-user-dialog>Cancelar</button><button class="dialog-save" type="submit">Salvar</button></footer>
-{% endmacro %}
-
-{% block content %}
-{% set active_page = "users" %}
-{% include "_app_header.html" %}
-
-<main class="users-shell">
-  <section class="users-heading" aria-labelledby="users-title">
-    <div><p class="dashboard-kicker">Administração de acessos</p><h1 id="users-title">Usuários</h1><p>Cadastre e gerencie as pessoas autorizadas a acessar o UaiRotas.</p></div>
-    <button class="users-create-button" type="button" data-open-user-dialog="create-user-dialog"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo usuário</button>
-  </section>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}<div class="fleet-flashes" aria-live="polite">{% for category, message in messages %}<p class="fleet-flash fleet-flash--{{ category }}"{% if category == 'error' %} data-audible-alert data-alert-id="users-form-error"{% endif %}>{{ message }}</p>{% endfor %}</div>{% endif %}
-  {% endwith %}
-
-  <section class="users-summary" aria-label="Resumo dos usuários">
-    <article><span class="users-summary__icon users-summary__icon--wine" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20v-2a5.5 5.5 0 0 1 11 0v2M14 14.5a4.5 4.5 0 0 1 6.5 4V20"/></svg></span><div><span>Total de usuários</span><strong>{{ totals.all }}</strong><small>Cadastrados no sistema</small></div></article>
-    <article><span class="users-summary__icon users-summary__icon--green" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span><div><span>Usuários ativos</span><strong>{{ totals.active }}</strong><small>Com acesso permitido</small></div></article>
-    <article><span class="users-summary__icon users-summary__icon--blue" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 2.8 8.2 7 10 4.2-1.8 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-5"/></svg></span><div><span>Administradores</span><strong>{{ totals.admins }}</strong><small>Acesso completo</small></div></article>
-    <article><span class="users-summary__icon users-summary__icon--yellow" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span><div><span>Supervisores</span><strong>{{ totals.supervisors }}</strong><small>Acompanhamento operacional</small></div></article>
-  </section>
-
-  <section class="panel users-panel">
-    <header class="users-toolbar">
-      <div><h2>Usuários cadastrados</h2><p>Dados pessoais, função e situação de acesso</p></div>
-      <form class="users-search" method="get" role="search"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg><input type="search" name="busca" value="{{ search }}" placeholder="Buscar por nome, e-mail ou CPF" aria-label="Buscar usuários"><button type="submit">Buscar</button>{% if search %}<a href="{{ url_for('users.users') }}">Limpar</a>{% endif %}</form>
-    </header>
-    {% if users %}
-      <div class="table-scroll"><table class="users-table"><thead><tr><th>Usuário</th><th>Contato</th><th>CPF</th><th>Nascimento</th><th>Função</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody>
-        {% for user in users %}<tr>
-          <td><span class="user-avatar" aria-hidden="true">{{ (user.name.split()[0][0] ~ (user.name.split()[1][0] if user.name.split() | length > 1 else '')) | upper }}</span><div><strong>{{ user.name }}</strong><small>{{ user.address or 'Endereço não informado' }}</small></div></td>
-          <td><strong>{{ user.email }}</strong><small>{{ user.phone or 'Telefone não informado' }}</small></td>
-          <td>{{ user.cpf[:3] ~ '.' ~ user.cpf[3:6] ~ '.' ~ user.cpf[6:9] ~ '-' ~ user.cpf[9:] if user.cpf else 'Não informado' }}</td>
-          <td>{{ user.birth_date.strftime('%d/%m/%Y') if user.birth_date else 'Não informada' }}</td>
-          <td><span class="user-role user-role--{{ user.role }}">{{ 'Administrador' if user.role == 'admin' else 'Supervisor' }}</span></td>
-          <td><span class="user-status user-status--{{ 'active' if user.active else 'inactive' }}">{{ 'Ativo' if user.active else 'Inativo' }}</span></td>
-          <td><button class="user-edit-button" type="button" data-open-user-dialog="edit-user-{{ user.id }}-dialog" aria-label="Editar {{ user.name }}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16-.8 4.8L8 20l10-10-4-4L4 16ZM12.5 7.5l4 4"/></svg>Editar</button></td>
-        </tr>{% endfor %}
-      </tbody></table></div>
-    {% else %}
-      <div class="users-empty"><strong>Nenhum usuário encontrado</strong><p>Revise o termo pesquisado ou limpe o filtro.</p></div>
-    {% endif %}
-  </section>
-</main>
-
-<dialog class="user-dialog" id="create-user-dialog">
-  <form method="post" action="{{ url_for('users.create_user') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Novo usuário', 'Preencha os dados pessoais e defina o nível de acesso.') }}<div class="user-dialog__body"><section><h3>Dados pessoais</h3><div class="user-form-grid">{{ user_field('Nome completo', 'name', placeholder='Nome da pessoa') }}{{ user_field('Telefone', 'phone', type='tel', placeholder='(34) 99999-9999') }}{{ user_field('E-mail', 'email', type='email', placeholder='usuario@empresa.com') }}{{ user_field('CPF', 'cpf', placeholder='000.000.000-00') }}{{ user_field('Data de nascimento', 'birth_date', type='date') }}<label class="user-field user-field--wide"><span>Endereço<b>*</b></span><textarea name="address" placeholder="Rua, número, bairro, cidade e estado" required></textarea></label></div></section><section><h3>Acesso ao sistema</h3><div class="user-form-grid">{{ role_field() }}{{ user_field('Senha inicial', 'password', type='password', placeholder='Mínimo de 8 caracteres') }}<label class="user-active-toggle"><input type="checkbox" name="active" checked><span><strong>Usuário ativo</strong><small>Permitir acesso ao sistema</small></span></label></div></section></div>{{ dialog_footer() }}</form>
-</dialog>
-
-{% for user in users %}
-  <dialog class="user-dialog" id="edit-user-{{ user.id }}-dialog">
-    <form method="post" action="{{ url_for('users.edit_user', user_id=user.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{{ dialog_header('Editar usuário', 'Atualize os dados de ' ~ user.name ~ '.') }}<div class="user-dialog__body"><section><h3>Dados pessoais</h3><div class="user-form-grid">{{ user_field('Nome completo', 'name', user.name) }}{{ user_field('Telefone', 'phone', user.phone, 'tel') }}{{ user_field('E-mail', 'email', user.email, 'email') }}{{ user_field('CPF', 'cpf', user.cpf) }}{{ user_field('Data de nascimento', 'birth_date', user.birth_date.isoformat() if user.birth_date else '', 'date') }}<label class="user-field user-field--wide"><span>Endereço<b>*</b></span><textarea name="address" required>{{ user.address or '' }}</textarea></label></div></section><section><h3>Acesso ao sistema</h3><div class="user-form-grid">{{ role_field(user.role) }}{{ user_field('Nova senha', 'password', type='password', placeholder='Deixe vazio para manter a atual', required=false) }}<label class="user-active-toggle"><input type="checkbox" name="active"{% if user.active %} checked{% endif %}><span><strong>Usuário ativo</strong><small>Permitir acesso ao sistema</small></span></label></div></section></div>{{ dialog_footer() }}</form>
-  </dialog>
-{% endfor %}
-{% endblock %}
+{% extends "page.html" %}{% from "_ui.html" import metric, field, select, errors_summary with context %}{% set active_page='users' %}{% block title %}Usuários | UaiRotas{% endblock %}{% block page_content %}
+<div class="page-heading">
+<div>
+<p class="kicker">Administração</p>
+<h1>Usuários</h1>
+<p>Gerencie o acesso de administradores e supervisores.</p>
+</div>
+<button type="button" class="button primary" data-user-create>Novo usuário</button>
+</div>
+<div class="metrics">{{ metric('Usuários', totals.all) }}{{ metric('Ativos', totals.active) }}{{ metric('Administradores ativos', totals.admins) }}{{ metric('Supervisores ativos', totals.supervisors) }}</div>
+<section class="card">
+<form method="get" class="filters">
+<label for="user-search">Buscar usuário<input id="user-search" name="busca" type="search" maxlength="120" value="{{ search }}" placeholder="Nome, e-mail ou CPF">
+</label>
+<button type="submit" class="button">Buscar</button>
+<a class="button subtle" href="{{ url_for('users.users') }}">Limpar</a>
+</form>
+<p class="muted">{{ pagination.total }} resultado(s) · até 25 por página.</p>
+<p data-user-message role="status">
+</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Nome</th>
+<th>E-mail</th>
+<th>CPF</th>
+<th>Função</th>
+<th>Situação</th>
+<th>Ação</th>
+</tr>
+</thead>
+<tbody>{% for user in users %}<tr>
+<td>
+<strong>{{ user.name }}</strong>
+</td>
+<td>{{ user.email }}</td>
+<td>{{ '***.***.***-' + user.cpf[-2:] if user.cpf else 'Não informado' }}</td>
+<td>{{ user.role|capitalize }}</td>
+<td>
+<span class="status {{ 'status--done' if user.active else '' }}">{{ 'Ativo' if user.active else 'Inativo' }}</span>
+</td>
+<td>
+<button class="button subtle" type="button" data-user-edit="{{ url_for('users.user_details', user_id=user.id) }}">Editar</button>
+</td>
+</tr>{% else %}<tr>
+<td colspan="6">Nenhum usuário encontrado.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+<nav class="pagination" aria-label="Páginas de usuários">{% if pagination.has_prev %}<a class="button" href="{{ url_for('users.users', busca=search, pagina=pagination.prev_num) }}">Anterior</a>{% endif %}<span>{{ pagination.page }} / {{ pagination.pages or 1 }}</span>{% if pagination.has_next %}<a class="button" href="{{ url_for('users.users', busca=search, pagina=pagination.next_num) }}">Próxima</a>{% endif %}</nav>
+</section>
+<dialog id="user-dialog" aria-labelledby="user-dialog-title" {% if errors %}data-auto-open{% endif %}>
+<form data-user-form data-create-action="{{ url_for('users.create_user', busca=search, pagina=pagination.page) }}" method="post" action="{{ url_for('users.edit_user', user_id=editing_id, busca=search, pagina=pagination.page) if editing_id else url_for('users.create_user', busca=search, pagina=pagination.page) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="dialog-heading">
+<h2 id="user-dialog-title">{{ 'Editar usuário' if editing_id else 'Novo usuário' }}</h2>
+<button type="button" class="icon-button" data-dialog-close aria-label="Fechar">×</button>
+</div>
+<div class="dialog-body">{{ errors_summary(errors) }}<p class="muted">* Campos obrigatórios. Na edição, deixe a senha vazia para mantê-la.</p>
+<div class="form-grid">
+{{ field('Nome', 'name', form_values, errors, maxlength=120, prefix='user-') }}{{ field('Telefone com DDD', 'phone', form_values, errors, 'tel', maxlength=20, prefix='user-') }}
+{{ field('E-mail', 'email', form_values, errors, 'email', maxlength=255, prefix='user-') }}{{ field('Endereço', 'address', form_values, errors, maxlength=255, prefix='user-') }}
+{{ field('CPF', 'cpf', form_values, errors, maxlength=14, prefix='user-') }}{{ field('Data de nascimento', 'birth_date', form_values, errors, 'date', max=today, prefix='user-') }}
+{{ select('Função', 'role', [('admin','Administrador'),('supervisor','Supervisor')], form_values, errors, prefix='user-') }}
+{{ field('Senha', 'password', form_values, errors, 'password', not editing_id, maxlength=128, prefix='user-') }}
+<label class="check-row">
+<input name="active" type="checkbox" {% if form_values.get('active', 'on' if not errors else '') == 'on' %}checked{% endif %}>Usuário ativo</label>
+</div>
+</div>
+<div class="dialog-footer">
+<button type="button" class="button" data-dialog-close>Cancelar</button>
+<button type="submit" class="button primary">Salvar usuário</button>
+</div>
+</form>
+</dialog>{% endblock %}

@@ -1,252 +1,148 @@
 (() => {
-  const mapElements = [...document.querySelectorAll("[data-mapbox-map]")];
-  if (!mapElements.length) return;
-
-  const accessToken = document.querySelector('meta[name="mapbox-access-token"]')?.content.trim();
-
-  const showMessage = (element, message) => {
-    const shell = element.closest(".mapbox-map-shell");
-    const messageBox = shell?.querySelector("[data-mapbox-map-message]");
-    if (!messageBox) return;
-    messageBox.textContent = message;
-    messageBox.hidden = false;
-    element.setAttribute("aria-hidden", "true");
-  };
-
-  const readPayload = (element) => {
-    const source = document.getElementById(element.dataset.mapSource);
-    if (!source) throw new Error("Dados do mapa não encontrados.");
-    return JSON.parse(source.textContent);
-  };
-
-  const coordinates = (item) => [item.lng, item.lat];
-  const styleForTheme = () => document.body.dataset.theme === "dark"
-    ? "mapbox://styles/mapbox/dark-v11"
-    : "mapbox://styles/mapbox/streets-v12";
-
-  const popupContent = (title, detail) => {
-    const content = document.createElement("div");
-    content.className = "map-info";
-    const heading = document.createElement("strong");
-    const description = document.createElement("span");
-    heading.textContent = title;
-    description.textContent = detail;
-    content.append(heading, description);
-    return content;
-  };
-
-  const addMarker = (map, item, type, label, color, title, detail) => {
-    const markerElement = document.createElement("button");
-    markerElement.type = "button";
-    markerElement.className = `mapbox-marker mapbox-marker--${type}`;
-    markerElement.style.setProperty("--marker-color", color);
-    markerElement.textContent = label;
-    markerElement.setAttribute("aria-label", `${title}: ${detail}`);
-
-    return new mapboxgl.Marker({ element: markerElement, anchor: "center" })
-      .setLngLat(coordinates(item))
-      .setPopup(new mapboxgl.Popup({ offset: 18 }).setDOMContent(popupContent(title, detail)))
-      .addTo(map);
-  };
-
-  const directionsGeometry = async (route) => {
-    const waypoints = route.path.map((point) => coordinates(point).join(",")).join(";");
-    const parameters = new URLSearchParams({
-      access_token: accessToken,
-      geometries: "geojson",
-      overview: "full",
-      steps: "false",
-    });
-    const endpoint = `https://api.mapbox.com/directions/v5/mapbox/driving/${waypoints}?${parameters}`;
-    const response = await fetch(endpoint);
-    if (!response.ok) throw new Error(`Directions API respondeu ${response.status}.`);
-    const result = await response.json();
-    const match = result.routes?.[0];
-    if (!match?.geometry) throw new Error("A Directions API não retornou uma rota.");
-    return {
-      geometry: match.geometry,
-      distanceKm: match.distance / 1000,
-      durationMinutes: Math.round(match.duration / 60),
-    };
-  };
-
-  const buildMap = (element) => {
-    const payload = readPayload(element);
-    const selectedRoute = element.dataset.selectedRoute || "todos";
-    mapboxgl.accessToken = accessToken;
-
-    const map = new mapboxgl.Map({
-      container: element,
-      style: styleForTheme(),
-      center: coordinates(payload.center),
-      zoom: payload.zoom || 13,
-      locale: {
-        "NavigationControl.ZoomIn": "Ampliar",
-        "NavigationControl.ZoomOut": "Reduzir",
-        "NavigationControl.ResetBearing": "Redefinir orientação",
-        "FullscreenControl.Enter": "Tela cheia",
-        "FullscreenControl.Exit": "Sair da tela cheia",
-      },
-    });
-
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), "top-right");
-    map.addControl(new mapboxgl.FullscreenControl(), "top-right");
-
-    const boundsByRoute = new Map();
-    const routeMetrics = new Map();
-    const registeredRouteEvents = new Set();
-    const allBounds = new mapboxgl.LngLatBounds();
-    let focusedRoute = selectedRoute;
-
-    payload.routes.forEach((route) => {
-      const routeBounds = new mapboxgl.LngLatBounds();
-      route.path.forEach((point) => {
-        routeBounds.extend(coordinates(point));
-        allBounds.extend(coordinates(point));
-      });
-      boundsByRoute.set(route.id, routeBounds);
-    });
-
-    const lineOpacity = (routeId) => focusedRoute === "todos" || focusedRoute === routeId ? 0.92 : 0.16;
-    const lineWidth = (routeId) => focusedRoute === routeId ? 7 : 5;
-
-    const addRouteLayers = () => {
-      payload.routes.forEach((route) => {
-        const sourceId = `route-source-${route.id}`;
-        const layerId = `route-layer-${route.id}`;
-        if (map.getSource(sourceId)) return;
-        map.addSource(sourceId, {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: { id: route.id, name: route.name },
-            geometry: { type: "LineString", coordinates: route.path.map(coordinates) },
-          },
-        });
-        map.addLayer({
-          id: layerId,
-          type: "line",
-          source: sourceId,
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-color": route.color,
-            "line-opacity": lineOpacity(route.id),
-            "line-width": lineWidth(route.id),
-          },
-        });
-
-        if (!registeredRouteEvents.has(route.id)) {
-          map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
-          map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
-          map.on("click", layerId, (event) => {
-            const metrics = routeMetrics.get(route.id);
-            const detail = metrics
-              ? `${metrics.distanceKm.toFixed(1).replace(".", ",")} km · cerca de ${metrics.durationMinutes} min`
-              : "Trajeto planejado";
-            new mapboxgl.Popup({ offset: 8 })
-              .setLngLat(event.lngLat)
-              .setDOMContent(popupContent(route.name, detail))
-              .addTo(map);
-          });
-          registeredRouteEvents.add(route.id);
-        }
-      });
-    };
-
-    const alignRoutesToRoads = async () => {
-      const results = await Promise.allSettled(payload.routes.map(async (route) => {
-        const matched = await directionsGeometry(route);
-        routeMetrics.set(route.id, matched);
-        const source = map.getSource(`route-source-${route.id}`);
-        if (source) {
-          source.setData({
-            type: "Feature",
-            properties: { id: route.id, name: route.name },
-            geometry: matched.geometry,
-          });
-        }
-      }));
-      element.dataset.routeApiStatus = results.every((result) => result.status === "fulfilled")
-        ? "ready"
-        : "fallback";
-    };
-
-    const focusRoute = (routeId) => {
-      focusedRoute = routeId;
-      payload.routes.forEach((route) => {
-        const layerId = `route-layer-${route.id}`;
-        if (!map.getLayer(layerId)) return;
-        map.setPaintProperty(layerId, "line-opacity", lineOpacity(route.id));
-        map.setPaintProperty(layerId, "line-width", lineWidth(route.id));
-      });
-      const bounds = boundsByRoute.get(routeId);
-      if (bounds) map.fitBounds(bounds, { padding: 70, maxZoom: 15 });
-    };
-
-    map.on("load", () => {
-      addRouteLayers();
-      alignRoutesToRoads();
-      if (selectedRoute !== "todos") focusRoute(selectedRoute);
-      else if (!allBounds.isEmpty()) map.fitBounds(allBounds, { padding: 55, maxZoom: 14 });
-
-      payload.vehicles.forEach((vehicle) => {
-        const route = payload.routes.find((item) => item.id === vehicle.routeId);
-        addMarker(
-          map, vehicle, vehicle.alert ? "alert" : "vehicle", "🚗",
-          vehicle.alert ? "#b4122d" : route?.color || "#d9233f",
-          vehicle.name, vehicle.status,
-        );
-      });
-
-      payload.orders.forEach((order) => addMarker(
-        map, order, "order", order.label, "#5d1830", order.code, "Ordem de serviço",
-      ));
-
-      payload.places.forEach((place) => addMarker(
-        map, place, "place", "◆", "#f2b622", place.name, place.kind,
-      ));
-    });
-
-    map.on("style.load", addRouteLayers);
-    map.on("error", (event) => {
-      if (event?.error?.status === 401 || event?.error?.status === 403) {
-        showMessage(element, "O Mapbox recusou o token. Verifique o token público e as URLs permitidas.");
-      }
-    });
-
-    document.querySelectorAll("[data-focus-route]").forEach((button) => {
-      button.addEventListener("click", () => focusRoute(button.dataset.focusRoute));
-    });
-
-    let currentStyle = styleForTheme();
-    new MutationObserver(() => {
-      const nextStyle = styleForTheme();
-      if (nextStyle !== currentStyle) {
-        currentStyle = nextStyle;
-        map.setStyle(nextStyle);
-      }
-    }).observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
-  };
-
-  if (!window.mapboxgl) {
-    mapElements.forEach((element) => showMessage(
-      element, "A biblioteca do Mapbox não pôde ser carregada. Verifique a conexão.",
-    ));
-    return;
+  "use strict";
+  const container = document.getElementById("operational-map");
+  if (!container) return;
+  const status = document.querySelector("[data-map-status]");
+  const retry = document.querySelector("[data-map-retry]");
+  const data = JSON.parse(document.getElementById("operational-map-data").textContent);
+  const token = document.querySelector('meta[name="mapbox-access-token"]')?.content || "";
+  function message(text, canRetry = false) { status.textContent = text; retry.hidden = !canRetry; }
+  if (!window.mapboxgl || !token.startsWith("pk.") || !mapboxgl.supported()) {
+    message(!token.startsWith("pk.") ? "Configure o token público do Mapbox para carregar o mapa. As ordens continuam disponíveis na lista." :
+      "O mapa não carregou ou o navegador não disponibilizou WebGL. As ordens continuam disponíveis na lista.", true);
+    retry.addEventListener("click", () => window.location.reload()); return;
   }
-
-  if (!accessToken || accessToken === "insira_seu_token_publico_restrito_aqui") {
-    mapElements.forEach((element) => showMessage(
-      element, "Configure MAPBOX_ACCESS_TOKEN no arquivo .env para exibir o mapa.",
-    ));
-    return;
+  const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const style = () => document.documentElement.dataset.theme === "dark" ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/streets-v12";
+  mapboxgl.accessToken = token;
+  const store = UaiRotas.routeStore(data.routes), cache = new Map(), controllers = new Set(), markers = [];
+  const registeredLayers = new Set();
+  let focused = null, loaded = false, aligning = false;
+  let map;
+  try {
+    map = new mapboxgl.Map({ container, style:style(), center:[data.center.lng, data.center.lat], zoom:data.zoom,
+      attributionControl:true, locale:{ "NavigationControl.ZoomIn":"Ampliar", "NavigationControl.ZoomOut":"Reduzir",
+        "NavigationControl.ResetBearing":"Orientar para o norte", "FullscreenControl.Enter":"Tela cheia", "FullscreenControl.Exit":"Sair da tela cheia" } });
+  } catch (_) {
+    message("Não foi possível iniciar o mapa. Confira a conexão e a disponibilidade de WebGL.", true);
+    retry.addEventListener("click", () => window.location.reload()); return;
   }
-
-  mapElements.forEach((element) => {
-    try {
-      buildMap(element);
-    } catch (error) {
-      showMessage(element, "Não foi possível carregar os dados do mapa.");
+  map.addControl(new mapboxgl.NavigationControl(), "top-right");
+  map.addControl(new mapboxgl.FullscreenControl(), "top-right");
+  function popup(title, lines) {
+    const wrapper = document.createElement("div"), heading = document.createElement("strong");
+    heading.textContent = title; wrapper.appendChild(heading);
+    for (const line of lines) { const p = document.createElement("p"); p.textContent = line; wrapper.appendChild(p); }
+    return new mapboxgl.Popup({ offset:24, maxWidth:"320px" }).setDOMContent(wrapper);
+  }
+  function applyLayers() {
+    if (!map.isStyleLoaded()) return;
+    for (const route of data.routes) {
+      const id = "route-" + route.id, feature = store.feature(route.id);
+      if (!feature) continue;
+      if (map.getSource(id)) map.getSource(id).setData(feature);
+      else map.addSource(id, { type:"geojson", data:feature });
+      if (!map.getLayer(id)) map.addLayer({ id, type:"line", source:id,
+        layout:{ "line-join":"round", "line-cap":"round" },
+        paint:{ "line-color":route.color, "line-width":5, "line-opacity":.86 } });
+      map.setLayoutProperty(id, "visibility", focused && String(route.id) !== focused ? "none" : "visible");
+      if (!registeredLayers.has(id)) {
+        map.on("click", id, event => popup(route.name, [
+          route.path_kind === "recorded" ? "Trajeto registrado" : store.get(route.id)?.matched ? "Rota planejada pela malha viária" : "Ligação aproximada entre pontos",
+          "Data: " + data.date, route.demo ? "Dados demonstrativos" : "Dados cadastrados"
+        ]).setLngLat(event.lngLat).addTo(map));
+        registeredLayers.add(id);
+      }
     }
+  }
+  function boundsFor(routes) {
+    const bounds = new mapboxgl.LngLatBounds(); let count = 0;
+    for (const route of routes) for (const point of store.get(route.id)?.geometry.coordinates || []) { bounds.extend(point); count++; }
+    return count ? bounds : null;
+  }
+  function focusRoute(id, scroll = false) {
+    focused = id === null ? null : String(id); applyLayers();
+    for (const entry of markers) entry.element.hidden = !!(focused && entry.routeId && entry.routeId !== focused);
+    document.querySelectorAll("[data-route-focus]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.routeFocus === focused)));
+    const bounds = boundsFor(focused ? data.routes.filter(r => String(r.id) === focused) : data.routes);
+    if (bounds && loaded) map.fitBounds(bounds, { padding:55, maxZoom:15, duration:reduced() ? 0 : 500 });
+    if (scroll && window.innerWidth < 900) container.scrollIntoView({ behavior:reduced() ? "auto" : "smooth", block:"center" });
+  }
+  const icons = {
+    office:'<path d="M4 21V3h16v18M1 21h22M8 7h2m4 0h2M8 11h2m4 0h2M10 21v-6h4v6"/>',
+    warehouse:'<path d="M2 9 12 3l10 6v12H2ZM6 21V11h12v10M6 15h12M6 18h12"/>',
+    restaurant:'<path d="M5 3v7m3-7v7m3-7v7M5 7h6M8 10v11M18 3v18m0-18c-4 3-4 9 0 9"/>',
+    fuel:'<path d="M3 21V4h11v17M2 21h14M5 7h7v5H5ZM14 9h3v8a2 2 0 0 0 4 0V9l-4-4"/>',
+    car:'<path d="m4 9 2-5h12l2 5M3 9h18v9H3ZM6 18v3m12-3v3M6 13h2m8 0h2"/>'
+  };
+  function marker(point, title, lines, routeId, color, icon, label, alert = false) {
+    const element = document.createElement("button");
+    element.type = "button"; element.className = "map-marker" + (icon && icon !== "car" ? " map-poi" : "");
+    element.setAttribute("aria-label", title); element.style.setProperty("--marker-color", color || "#681027");
+    const inner = document.createElement("span"); inner.className = "map-marker-inner" + (alert ? " map-alert-ring" : "");
+    if (icon) {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+      // Icons are fixed local constants; no API content is interpreted as HTML.
+      svg.innerHTML = icons[icon] || icons.office; inner.appendChild(svg);
+    } else inner.textContent = label;
+    element.appendChild(inner);
+    const m = new mapboxgl.Marker({ element }).setLngLat(point).setPopup(popup(title, lines)).addTo(map);
+    markers.push({ element, marker:m, routeId:routeId == null ? null : String(routeId) });
+  }
+  function addMarkers() {
+    for (const route of data.routes) if (store.get(route.id)) {
+      marker(route.points[0], route.name, [route.path_kind === "recorded" ? "Início do trajeto registrado" : "Início da rota planejada", "Não é uma posição em tempo real."],
+        route.id, route.color, "car");
+    }
+    for (const order of data.orders) marker([order.lng, order.lat], order.code + " · " + order.customer,
+      [order.address, order.service, order.status], order.route_id, "#681027", null, order.label, order.status === "Atrasada");
+    for (const place of data.places) marker([place.lng, place.lat], place.name, [place.address, "Local de interesse"],
+      null, null, place.type in icons ? place.type : "office");
+  }
+  async function directions(route) {
+    const key = JSON.stringify(route.points);
+    if (cache.has(key)) return cache.get(key);
+    const task = (async () => {
+      if (route.points.length > 25) throw new Error("too_many_points");
+      const controller = new AbortController(); controllers.add(controller);
+      const timer = setTimeout(() => controller.abort(), 10000);
+      try {
+        const coordinates = route.points.map(p => p.join(",")).join(";");
+        const url = "https://api.mapbox.com/directions/v5/mapbox/driving/" + coordinates +
+          "?geometries=geojson&overview=full&access_token=" + encodeURIComponent(token);
+        const response = await fetch(url, { signal:controller.signal });
+        if (!response.ok) throw new Error("directions");
+        const body = await response.json(), geometry = body.routes?.[0]?.geometry;
+        if (!store.set(route.id, geometry)) throw new Error("geometry");
+        return geometry;
+      } finally { clearTimeout(timer); controllers.delete(controller); }
+    })();
+    cache.set(key, task);
+    try { return await task; } catch (error) { cache.delete(key); throw error; }
+  }
+  async function alignRoutes() {
+    if (aligning) return;
+    aligning = true; retry.disabled = true;
+    const pending = data.routes.filter(r => store.get(r.id) && !store.get(r.id).matched);
+    if (pending.length) message("Calculando rotas planejadas…");
+    await Promise.allSettled(pending.map(async route => { const geometry = await directions(route); store.set(route.id, geometry); applyLayers(); }));
+    const fallback = data.routes.filter(r => store.get(r.id) && !store.get(r.id).matched).length;
+    message(fallback ? fallback + " rota(s) com ligação aproximada entre pontos. Não foi possível calcular todas as vias." :
+      data.routes.length ? "Mapa pronto. Rotas planejadas identificadas por colaborador." : "Nenhuma rota nos filtros selecionados.", fallback > 0);
+    retry.disabled = false; aligning = false; focusRoute(focused);
+  }
+  const loadingTimer = setTimeout(() => { if (!loaded) message("O mapa demorou a carregar. Confira a conexão e tente novamente.", true); }, 15000);
+  map.on("style.load", applyLayers);
+  map.on("load", () => { loaded = true; clearTimeout(loadingTimer); addMarkers(); applyLayers(); focusRoute(null); alignRoutes(); });
+  map.on("error", event => {
+    if ([401,403].includes(event.error?.status)) message("O Mapbox recusou o acesso. Confira o token e os domínios autorizados.", true);
   });
+  window.addEventListener("uairotas:theme", () => { map.setStyle(style()); });
+  document.querySelectorAll("[data-route-focus]").forEach(button => button.addEventListener("click", () => focusRoute(button.dataset.routeFocus, true)));
+  document.querySelector("[data-map-reset]").addEventListener("click", () => focusRoute(null));
+  retry.addEventListener("click", () => { if (!loaded) window.location.reload(); else alignRoutes(); });
+  let observer;
+  if (typeof ResizeObserver !== "undefined") { observer = new ResizeObserver(() => map.resize()); observer.observe(container); }
+  window.addEventListener("pagehide", () => { controllers.forEach(c => c.abort()); clearTimeout(loadingTimer); observer?.disconnect(); }, {once:true});
 })();

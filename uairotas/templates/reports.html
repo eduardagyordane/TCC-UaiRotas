@@ -1,0 +1,59 @@
+{% extends "page.html" %}
+{% from "_ui.html" import metric, source_note, costs_chart with context %}
+{% from "reports/_charts.html" import columns, status_chart, series_table with context %}
+{% set active_page = 'reports' %}
+{% set titles = {'overview':'Resumo dos relatórios', 'fleet':'Relatório de frota', 'routes':'Relatório de rotas'} %}
+{% set endpoints = {'overview':'main.reports', 'fleet':'main.fleet_reports', 'routes':'main.route_reports'} %}
+{% block title %}{{ titles[module] }} | UaiRotas{% endblock %}
+{% block page_content %}
+<div class="page-heading">
+  <div>
+    <p class="kicker">Análise da operação</p>
+    <h1>{{ titles[module] }}</h1>
+    <p>{{ overview.start.strftime('%d/%m/%Y') }} a {{ overview.end.strftime('%d/%m/%Y') }}</p>
+  </div>
+  <div class="actions">
+    <a class="button" href="{{ url_for('main.export_report', module=module, **filter_params) }}">Exportar CSV</a>
+    <button type="button" class="button primary" data-print>Imprimir / PDF</button>
+  </div>
+</div>
+{{ source_note(source) }}
+<nav class="tabs report-tabs" aria-label="Relatórios">
+  {% for key, label in [('overview','Resumo'), ('fleet','Frota'), ('routes','Rotas')] %}
+  <a class="{{ 'is-active' if module == key else '' }}" href="{{ url_for(endpoints[key], **filter_params) }}" {% if module == key %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+<form method="get" class="card filters report-filters" aria-label="Filtros dos relatórios">
+  <label for="report-period">Período
+    <select id="report-period" name="periodo">
+      {% for key, text in periods.items() %}<option value="{{ key }}" {% if selected_period == key %}selected{% endif %}>{{ text }}</option>{% endfor %}
+    </select>
+  </label>
+  <label for="report-vehicle">Veículo
+    <select id="report-vehicle" name="veiculo">
+      <option value="todos">Todos os veículos</option>
+      {% for vehicle in vehicle_options %}<option value="{{ vehicle.id }}" {% if selected_vehicle and selected_vehicle.id == vehicle.id %}selected{% endif %}>{{ vehicle.nickname }} · {{ vehicle.plate }}</option>{% endfor %}
+    </select>
+  </label>
+  <label for="report-driver">Motorista
+    <select id="report-driver" name="motorista">
+      <option value="todos">Todos os motoristas</option>
+      {% for driver in driver_options %}<option value="{{ driver.id }}" {% if selected_driver and selected_driver.id == driver.id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="button primary">Aplicar filtros</button>
+  <a class="button subtle" href="{{ url_for(endpoints[module]) }}">Limpar</a>
+</form>
+<div class="filter-selection" aria-label="Filtros aplicados">
+  <span><strong>Veículo:</strong> {{ selected_vehicle.nickname + ' · ' + selected_vehicle.plate if selected_vehicle else 'Todos os veículos' }}</span>
+  <span><strong>Motorista:</strong> {{ selected_driver.name if selected_driver else 'Todos os motoristas' }}</span>
+  <span><strong>Período:</strong> {{ periods[selected_period] }}</span>
+</div>
+{% if selected_driver and module != 'routes' %}<p class="muted report-filter-note">Custos e manutenções incluem apenas lançamentos vinculados a este motorista. Gastos sem vínculo aparecem em “Todos os motoristas”.</p>{% endif %}
+{% if selected_vehicle and module != 'fleet' %}<p class="muted report-filter-note">As ordens são filtradas pelo veículo registrado no atendimento. OS sem veículo vinculado aparecem em “Todos os veículos”.</p>{% endif %}
+<div data-report-module="{{ module }}">
+  {% if module == 'overview' %}{% include "reports/overview.html" %}
+  {% elif module == 'fleet' %}{% include "reports/fleet.html" %}
+  {% else %}{% include "reports/routes.html" %}{% endif %}
+</div>
+{% endblock %}

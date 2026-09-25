@@ -6,8 +6,9 @@ addopts = "--strict-markers"
 [tool.coverage.run]
 branch = true
 source = ["uairotas"]
+omit = ["*/templates/*"]
 
 [tool.coverage.report]
+omit = ["*/templates/*"]
 show_missing = true
 skip_covered = true
-

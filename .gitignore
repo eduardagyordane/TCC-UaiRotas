@@ -9,4 +9,10 @@ venv/
 .env
 instance/*.db
 instance/*.sqlite3
+instance/*-wal
+instance/*-shm
+backups/
+dist/
+coverage.json
+coverage.xml
 !.gitkeep

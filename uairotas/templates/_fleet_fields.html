@@ -1,0 +1,35 @@
+{% from "_ui.html" import field, select with context %}
+{% set vehicle_choices = [] %}{% for vehicle in vehicle_options %}{% set _ = vehicle_choices.append((vehicle.id, vehicle.nickname + ' · ' + vehicle.plate)) %}{% endfor %}
+{% set driver_choices = [] %}{% for driver in drivers %}{% set _ = driver_choices.append((driver.id, driver.name)) %}{% endfor %}
+<div class="form-grid">
+{% if kind == 'veiculo' %}
+{{ field('Placa ou chassi', 'placa_chassi', v, e, maxlength=20, prefix=prefix) }}{{ field('Apelido', 'apelido', v, e, maxlength=80, prefix=prefix) }}
+{{ select('Motorista', 'motorista', driver_choices, v, e, false, prefix) }}{{ field('Grupo do veículo', 'grupo', v, e, required=false, maxlength=80, prefix=prefix) }}
+{{ field('Marca', 'marca', v, e, maxlength=60, prefix=prefix) }}{{ field('Modelo', 'modelo', v, e, maxlength=80, prefix=prefix) }}
+{{ field('Ano', 'ano', v, e, 'number', false, 1, 1900, today.year + 1, prefix=prefix) }}
+{{ select('Porte', 'porte', [('Leve','Leve'),('Médio','Médio'),('Pesado','Pesado')], v, e, false, prefix) }}
+{{ select('Tipo no mapa', 'tipo_mapa', [('Carro','Carro'),('Utilitário','Utilitário'),('Moto','Moto')], v, e, false, prefix) }}
+{{ field('Tag', 'tag', v, e, required=false, maxlength=80, prefix=prefix) }}{{ field('Odômetro (km)', 'odometro', v, e, 'number', step=1, min=0, max=9999999, prefix=prefix) }}
+{{ field('Data da leitura', 'data_cadastro', v, e, 'date', false, max=today, prefix=prefix) }}{{ field('Hora da leitura', 'hora_leitura', v, e, 'time', false, prefix=prefix) }}
+{% elif kind == 'motorista' %}
+{{ field('Nome do motorista', 'nome', v, e, maxlength=120, prefix=prefix) }}{{ field('Contato com DDD', 'contato', v, e, 'tel', maxlength=20, prefix=prefix) }}
+{{ field('Foto de perfil (PNG/JPEG, até 512 KB)', 'foto', v, e, 'file', false, prefix=prefix) }}
+{{ select('Identificador', 'identificador', [('Nenhum','Nenhum'),('Tag NFC','Tag NFC'),('iButton','iButton'),('Cartão RFID','Cartão RFID')], v, e, false, prefix) }}
+{{ field('Matrícula', 'matricula', v, e, required=false, maxlength=60, prefix=prefix) }}{{ field('CPF', 'cpf', v, e, maxlength=14, prefix=prefix) }}{{ field('CNH', 'cnh', v, e, maxlength=14, prefix=prefix) }}
+{{ select('Categoria', 'categoria', [('A','A'),('B','B'),('AB','AB'),('C','C'),('D','D'),('E','E'),('AC','AC'),('AD','AD'),('AE','AE')], v, e, false, prefix) }}
+{{ field('1ª habilitação', 'primeira_habilitacao', v, e, 'date', false, max=today, prefix=prefix) }}{{ field('Validade da CNH', 'validade', v, e, 'date', false, prefix=prefix) }}
+<p class="form-wide muted">O acesso ao sistema é cadastrado no módulo Usuários.</p>
+{% else %}
+{{ select('Veículo da frota', 'veiculo', vehicle_choices, v, e, kind != 'gasto', prefix) }}
+{{ select('Motorista do lançamento', 'motorista', driver_choices, v, e, kind == 'multa', prefix) }}
+{% if kind != 'multa' %}<p class="form-wide muted">Selecione o motorista para incluir este gasto nos relatórios dele. Sem vínculo, o gasto aparece em “Todos os motoristas”.</p>{% endif %}
+{{ field('Última troca' if kind == 'oleo' else 'Data', 'ultima_troca' if kind == 'oleo' else 'data', v, e, 'date', max=today if kind != 'manutencao' else none, prefix=prefix) }}
+{% if kind == 'combustivel' %}
+{{ field('Litros', 'litros', v, e, 'number', step='0.001', min='0.001', max=1000, prefix=prefix) }}{{ field('Preço por litro (R$)', 'valor_litro', v, e, 'number', step='0.01', min='0.01', max=100, prefix=prefix) }}{{ field('Posto', 'posto', v, e, required=false, maxlength=120, prefix=prefix) }}
+<p class="form-wide muted">O valor total é calculado pelos litros × preço por litro.</p>
+{% else %}{{ field('Valor estimado (R$)' if kind == 'manutencao' else 'Valor (R$)', 'valor', v, e, 'number', step='0.01', min='0.01', max=1000000, prefix=prefix) }}{% endif %}
+{% if kind in ('oleo','combustivel') %}{{ field('Quilometragem (km)', 'quilometragem', v, e, 'number', kind == 'oleo', 1, 0, 9999999, prefix=prefix) }}{% endif %}
+{% if kind == 'oleo' %}{{ field('Próxima troca', 'proxima_troca', v, e, 'date', prefix=prefix) }}{{ field('Próxima quilometragem (km)', 'proxima_quilometragem', v, e, 'number', step=1, min=1, max=9999999, prefix=prefix) }}{% endif %}
+{% if kind in ('multa','gasto','manutencao') %}{{ field('Tipo de manutenção' if kind == 'manutencao' else 'Tipo', 'tipo', v, e, maxlength=80, prefix=prefix) }}{% endif %}
+{% if kind != 'combustivel' %}{{ field('Observações' if kind == 'manutencao' else 'Descrição', 'observacoes' if kind == 'manutencao' else 'descricao', v, e, required=kind in ('multa','gasto'), maxlength=1000, prefix=prefix) }}{% endif %}
+{% endif %}</div>

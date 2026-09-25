@@ -1,0 +1,17 @@
+{% extends "page.html" %}{% from "_ui.html" import field, errors_summary with context %}{% set active_page = 'fleet' %}{% block title %}Concluir manutenção | UaiRotas{% endblock %}{% block page_content %}<a href="{{ url_for('main.fleet') }}">← Voltar à frota</a>
+<div class="page-heading">
+<div>
+<h1>Concluir manutenção</h1>
+<p>{{ record.vehicle.nickname }} · {{ record.subtype }} · agendada para {{ record.date.strftime('%d/%m/%Y') }}</p>
+</div>
+</div>
+<section class="card narrow">{{ errors_summary(errors) }}<form method="post" action="{{ url_for('main.complete_maintenance', record_id=record.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<p>Informe a realização e o valor pago. O custo entrará nos relatórios pela data da realização.</p>
+<div class="form-grid">{{ field('Data da realização', 'data', form_values, errors, 'date', max=today) }}{{ field('Valor pago (R$)', 'valor', form_values, errors, 'number', step='0.01', min='0.01', max=1000000) }}</div>
+<div class="form-actions">
+<a class="button" href="{{ url_for('main.fleet') }}">Cancelar</a>
+<button class="button primary" type="submit">Concluir manutenção</button>
+</div>
+</form>
+</section>{% endblock %}

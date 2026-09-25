@@ -1,0 +1,36 @@
+{% macro columns(overview, kind) %}
+<div class="column-chart{% if kind == 'orders' %} column-chart--blue{% endif %}" role="img" aria-label="{{ 'OS concluídas' if kind == 'orders' else 'Custos em reais' }} por data; valores na tabela abaixo">
+  {% for point in overview.series %}
+  <div class="column-item" title="{{ point.label }}: {{ point.orders|string + ' OS' if kind == 'orders' else point.cents|money }}">
+    <div class="column-track"><span style="height:{{ point.order_height if kind == 'orders' else point.cost_height }}%"></span></div>
+    <small>{{ point.label }}</small>
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro status_chart(overview) %}
+{% if overview.orders_total %}
+<div class="status-report">
+  {% for key, label in status_labels.items() %}
+  {% set count = overview.statuses.get(key, 0) %}
+  {% set percent = count * 100 / overview.orders_total %}
+  <div class="bar-row">
+    <div><span class="status status--{{ key }}">{{ label }}</span><strong>{{ count }} · {{ percent|decimal_br }}%</strong></div>
+    <div class="bar-track" aria-hidden="true"><span class="status-bar--{{ key }}" style="width:{{ percent }}%"></span></div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}<p class="empty">Nenhuma ordem no período e nos filtros selecionados.</p>{% endif %}
+{% endmacro %}
+
+{% macro series_table(overview, kind) %}
+<details class="data-alternative">
+  <summary>{{ 'Tabela de custos por data' if kind == 'costs' else 'Tabela de ordens por data' }}</summary>
+  <table>
+    <thead><tr><th>Data (dia/mês ou mês/ano)</th><th>{{ 'Custos realizados' if kind == 'costs' else 'OS concluídas' }}</th></tr></thead>
+    <tbody>{% for point in overview.series %}<tr><td>{{ point.label }}</td><td>{{ point.cents|money if kind == 'costs' else point.orders }}</td></tr>{% endfor %}</tbody>
+    <tfoot><tr><th>Total</th><td>{{ overview.total_cents|money if kind == 'costs' else overview.complete }}</td></tr></tfoot>
+  </table>
+</details>
+{% endmacro %}

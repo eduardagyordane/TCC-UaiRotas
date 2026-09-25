@@ -1,0 +1,84 @@
+{% macro source_note(source) -%}
+<div class="source-note">
+<strong>{{ source.label }}</strong>
+<span>{{ source.description }} {{ source.integration }}</span>
+</div>
+{%- endmacro %}
+{% macro flashes() -%}{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-list" aria-live="polite">{% for category, message in messages %}<div class="flash flash--{{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}{%- endmacro %}
+{% macro metric(label, value, detail='') -%}<article class="metric">
+<span>{{ label }}</span>
+<strong>{{ value }}</strong>{% if detail %}<small>{{ detail }}</small>{% endif %}</article>{%- endmacro %}
+{% macro field(label, name, values, errors, type='text', required=true, step=none, min=none, max=none, maxlength=none, prefix='') -%}
+<div class="form-field">
+<label for="{{ prefix }}{{ name }}">{{ label }}{% if required %} <span aria-hidden="true">*</span>{% endif %}</label>
+<input id="{{ prefix }}{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ '' if type in ('password', 'file') else values.get(name, '') }}" {% if required %}required{% endif %} {% if step is not none %}step="{{ step }}"{% endif %} {% if min is not none %}min="{{ min }}"{% endif %} {% if max is not none %}max="{{ max }}"{% endif %} {% if maxlength %}maxlength="{{ maxlength }}"{% endif %} {% if type == 'password' %}autocomplete="new-password"{% endif %} {% if type == 'file' %}accept="image/png,image/jpeg"{% endif %} {% if name in errors %}aria-invalid="true" aria-describedby="{{ prefix }}{{ name }}-error"{% endif %}>
+{% if name in errors %}<small class="field-error" id="{{ prefix }}{{ name }}-error">{{ errors[name] }}</small>{% endif %}</div>
+{%- endmacro %}
+{% macro select(label, name, options, values, errors, required=true, prefix='') -%}
+<div class="form-field">
+<label for="{{ prefix }}{{ name }}">{{ label }}{% if required %} *{% endif %}</label>
+<select id="{{ prefix }}{{ name }}" name="{{ name }}" {% if required %}required{% endif %} {% if name in errors %}aria-invalid="true" aria-describedby="{{ prefix }}{{ name }}-error"{% endif %}>
+<option value="">Selecione</option>{% for key, text in options %}<option value="{{ key }}" {% if values.get(name, '')|string == key|string %}selected{% endif %}>{{ text }}</option>{% endfor %}</select>{% if name in errors %}<small class="field-error" id="{{ prefix }}{{ name }}-error">{{ errors[name] }}</small>{% endif %}</div>
+{%- endmacro %}
+{% macro errors_summary(errors) -%}{% if errors %}<div class="error-summary" role="alert" tabindex="-1" data-form-errors data-audible-alert data-alert-id="form:{{ uuid() }}" data-alert-category="forms">
+<strong>Confira os campos antes de salvar.</strong>
+<ul>{% for message in errors.values() %}<li>{{ message }}</li>{% endfor %}</ul>
+</div>{% endif %}{%- endmacro %}
+{% macro alert_list(alerts, acknowledge=false) -%}<div class="alert-list">{% for alert in alerts %}<article class="alert-card alert-card--{{ alert.level }}" {% if not alert.acknowledged %}data-audible-alert{% endif %} data-alert-id="{{ alert.id }}" data-alert-category="{{ alert.category }}">
+<span class="alert-symbol" aria-hidden="true">!</span>
+<div>
+<a href="{{ alert.url }}">
+<strong>{{ alert.title }}</strong>
+</a>
+<p>{{ alert.description }}</p>{% if alert.acknowledged %}<small>Visto por você · ocorrência pendente</small>{% elif acknowledge %}<form method="post" action="{{ url_for('main.acknowledge_alert') }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="occurrence_id" value="{{ alert.id }}">
+<button class="button subtle" type="submit">Marcar como visto</button>
+</form>{% endif %}</div>
+</article>{% else %}<p class="empty">Nenhum alerta para exibir.</p>{% endfor %}</div>{%- endmacro %}
+{% macro map_panel(map_data, large=false) -%}
+<section class="card map-card">
+<div class="section-heading">
+<h2>Mapa de rotas</h2>
+<button type="button" class="button subtle" data-map-reset>Mostrar todas</button>
+</div>
+<p class="muted map-note">Rotas planejadas entre os pontos cadastrados. Não representam a localização atual dos veículos.</p>
+<div id="operational-map" class="operational-map{% if large %} operational-map--large{% endif %}" aria-label="Mapa interativo das rotas">
+</div>
+<div class="map-status">
+<span data-map-status role="status">Carregando mapa…</span>
+<button class="button subtle" type="button" data-map-retry hidden>Tentar novamente</button>
+</div>
+<div class="map-legend">{% for route in map_data.routes %}<button type="button" class="legend-item" data-route-focus="{{ route.id }}" aria-pressed="false">
+<span class="color-dot" style="--route-color:{{ route.color }}">
+</span>{{ route.name }}</button>{% endfor %}</div>
+<script id="operational-map-data" type="application/json">{{ map_data|tojson }}</script>
+</section>
+{%- endmacro %}
+{% macro costs_chart(overview) -%}<div class="donut-layout">
+<div class="donut" style="background:{{ overview.donut }}" role="img" aria-label="Composição dos custos; valores na tabela ao lado">
+<div>
+<small>Total</small>
+<strong>{{ overview.total_cents|money }}</strong>
+</div>
+</div>
+<table>
+<caption>Custos por categoria (R$)</caption>
+<thead>
+<tr>
+<th>Categoria</th>
+<th>Valor</th>
+<th>%</th>
+</tr>
+</thead>
+<tbody>{% for cost in overview.costs %}<tr>
+<th>
+<span class="color-dot" style="--route-color:{{ cost.color }}">
+</span>{{ cost.label }}</th>
+<td>{{ cost.cents|money }}</td>
+<td>{{ cost.percent|decimal_br }}%</td>
+</tr>{% else %}<tr>
+<td colspan="3">Nenhum gasto no período.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>{%- endmacro %}

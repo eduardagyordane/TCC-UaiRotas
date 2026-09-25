@@ -6,11 +6,11 @@
     <span>Uai<span>Rotas</span></span>
   </a>
 
-  <button class="nav-toggle" type="button" data-nav-toggle aria-label="Abrir menu" aria-expanded="false">
+  <button class="nav-toggle" type="button" data-nav-toggle aria-label="Abrir menu" aria-expanded="false" aria-controls="main-nav">
     <span></span><span></span><span></span>
   </button>
 
-  <nav class="main-nav" data-main-nav aria-label="Navegação principal">
+  <nav id="main-nav" class="main-nav" data-main-nav aria-label="Navegação principal">
     <a class="main-nav__link{% if active_page == 'home' %} is-active{% endif %}" href="{{ url_for('main.home') }}"{% if active_page == 'home' %} aria-current="page"{% endif %}>Home</a>
     <a class="main-nav__link{% if active_page == 'routes' %} is-active{% endif %}" href="{{ url_for('main.routes') }}"{% if active_page == 'routes' %} aria-current="page"{% endif %}>Rotas</a>
     <a class="main-nav__link{% if active_page == 'fleet' %} is-active{% endif %}" href="{{ url_for('main.fleet') }}"{% if active_page == 'fleet' %} aria-current="page"{% endif %}>Frota</a>
@@ -37,6 +37,8 @@
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></svg>
       </summary>
       <div class="profile-dropdown">
+        <a href="{{ url_for('users.profile') }}">Meu perfil</a>
+        <button type="button" data-dialog-open="sound-settings">Preferências de som</button>
         <p><strong>{{ current_user.name }}</strong><span>{{ current_user.email }}</span></p>
         <form method="post" action="{{ url_for('auth.logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -46,5 +48,6 @@
     </details>
   </div>
 </header>
-<audio data-system-alert-audio preload="auto" src="{{ url_for('static', filename='audio/alarme_sistema.mp3') }}"></audio>
+<audio data-system-alert-audio preload="none" src="{{ url_for('static', filename='audio/alarme_sistema.mp3') }}"></audio>
 <span class="sr-only" data-alert-sound-status aria-live="polite"></span>
+<dialog id="sound-settings" aria-labelledby="sound-settings-title"><div class="dialog-heading"><h2 id="sound-settings-title">Preferências de som</h2><button type="button" class="icon-button" data-dialog-close aria-label="Fechar">×</button></div><div class="dialog-body"><label for="sound-volume">Volume</label><input id="sound-volume" data-sound-volume type="range" min="0" max="100" step="1"><fieldset><legend>Alertas sonoros por categoria</legend>{% for key, name in [('routes', 'Rotas e ordens'), ('fleet', 'Frota e manutenção'), ('forms', 'Erros nos formulários')] %}<label class="check-row"><input type="checkbox" data-sound-category="{{ key }}">{{ name }}</label>{% endfor %}</fieldset><button type="button" class="button" data-sound-test>Testar som</button><p class="muted" data-sound-feedback role="status"></p></div></dialog>

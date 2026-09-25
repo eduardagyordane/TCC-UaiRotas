@@ -1,0 +1,32 @@
+<div class="report-intro">
+  <span class="report-scope">Visão consolidada</span>
+  <p>Os principais resultados da frota e dos atendimentos. Abra um módulo para consultar os detalhes.</p>
+</div>
+<div class="metrics">
+  {{ metric('Custos da frota', overview.total_cents|money, 'Gastos realizados no período') }}
+  {{ metric('Quilometragem rodada', (overview.distance_m / 1000)|decimal_br + ' km', overview.trip_count|string + ' viagem(ns) registrada(s)') }}
+  {{ metric('OS concluídas', overview.complete|string + ' / ' + overview.orders_total|string, 'Atendimentos no período') }}
+  {{ metric('Taxa de conclusão', overview.completion|string + '%', 'Ordens concluídas sobre o total') }}
+</div>
+<div class="two-columns">
+  <section class="card">
+    <div class="section-heading"><h2>Principais gastos da frota</h2><a href="{{ url_for('main.fleet_reports', **filter_params) }}">Ver detalhes da frota →</a></div>
+    {{ costs_chart(overview) }}
+  </section>
+  <section class="card">
+    <div class="section-heading"><h2>Visão geral dos atendimentos</h2><a href="{{ url_for('main.route_reports', **filter_params) }}">Ver detalhes das rotas →</a></div>
+    {{ status_chart(overview) }}
+  </section>
+</div>
+<div class="two-columns report-links">
+  <a class="card" href="{{ url_for('main.fleet_reports', **filter_params) }}">
+    <span class="report-scope">Frota</span>
+    <h2>Custos e manutenção →</h2>
+    <p>Combustível, óleo, multas, gastos por veículo e manutenções.</p>
+  </a>
+  <a class="card" href="{{ url_for('main.route_reports', **filter_params) }}">
+    <span class="report-scope">Rotas</span>
+    <h2>Atendimentos e deslocamentos →</h2>
+    <p>Produtividade, situação das ordens, tempos de viagem, almoço e desvios.</p>
+  </a>
+</div>
